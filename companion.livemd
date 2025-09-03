@@ -1,0 +1,11 @@
+# Companion Livebook for Planning Poker
+
+## Test Connection
+
+```elixir
+:application.info()
+```
+
+```elixir
+
+```

@@ -332,3 +332,22 @@ And **never** do this:
 <!-- phoenix:liveview-end -->
 
 <!-- usage-rules-end -->
+
+## Deployment Guidelines
+
+### Fly.io Deployment
+- This application is deployed to Fly.io using the configuration in `fly.toml`
+- Deployment commands:
+  - `fly deploy` - Deploy the application
+  - `fly logs` - View application logs
+  - `fly ssh console` - SSH into the running instance
+  - `./fly-remote.sh` - Script for remote IEx console access
+- The app runs on `planning-poker-rico.fly.dev` in Frankfurt region
+- Auto-scaling is configured with 0 minimum machines (scales to zero)
+- Database migrations run automatically via release command
+
+### Database (Neon.tech)
+- The production database is hosted on Neon.tech
+- PostgreSQL-compatible serverless database
+- Connection details are configured via `DATABASE_URL` environment variable in Fly.io secrets
+- Supports automatic scaling and branching for development

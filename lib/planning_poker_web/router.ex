@@ -18,6 +18,7 @@ defmodule PlanningPokerWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    post "/join", PageController, :join
   end
 
   # Other scopes may use custom stacks.
