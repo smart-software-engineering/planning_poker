@@ -61,11 +61,8 @@ config :logger, :default_formatter,
 config :phoenix, :json_library, Jason
 
 # PokerServer implementation configuration
-config :planning_poker, :game_server, PlanningPoker.PokerServer
+config :planning_poker, :poker_server, PlanningPoker.PokerServer
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
-
-# Configure bcrypt hashing
-config :bcrypt_elixir, :log_rounds, 12

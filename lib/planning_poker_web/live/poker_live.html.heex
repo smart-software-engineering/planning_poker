@@ -1,0 +1,107 @@
+<Layouts.app flash={@flash}>
+  <div class="max-w-4xl mx-auto py-8 px-4">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-base-content mb-2">{@poker.name}</h1>
+      <%= if @poker.description do %>
+        <div class="markdown-preview text-base-content">
+          {raw(Earmark.as_html!(@poker.description))}
+        </div>
+      <% end %>
+    </div>
+
+    <%= if @user_identified do %>
+      <!-- User is identified, show main poker content -->
+      <div class="bg-base-100 rounded-lg shadow-md p-6 border border-base-300">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-base-content">Welcome, {@user_name}!</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
+          <div>
+            <span class="text-base-content opacity-60">Poker ID:</span>
+            <span class="text-base-content font-mono">{@poker.id}</span>
+          </div>
+          <div>
+            <span class="text-base-content opacity-60">Card Type:</span>
+            <span class="text-base-content capitalize">
+              {String.replace(@poker.card_type || "fibonacci", "-", " ")}
+            </span>
+          </div>
+        </div>
+        
+<!-- Active Users Section -->
+        <%= if map_size(@users) > 0 do %>
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold text-base-content mb-3">
+              Active Users ({map_size(@users)})
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <%= for {_name, user} <- @users do %>
+                <div class="bg-base-200 rounded-lg p-3 flex items-center gap-2">
+                  <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span class="text-base-content font-medium">{user.name}</span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        
+<!-- Poker Data from PokerServer -->
+        <%= if @poker_state do %>
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold text-base-content mb-3">Poker State</h3>
+            <div class="bg-base-200 rounded-lg p-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span class="text-base-content opacity-60">Server Started:</span>
+                  <span class="text-base-content">
+                    {Calendar.strftime(@poker_state.created_at, "%H:%M:%S")}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-base-content opacity-60">Votings Available:</span>
+                  <span class="text-base-content">
+                    {length(@poker_state.poker.votings)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        
+<!-- TODO: Add main poker functionality here -->
+        <p class="text-base-content opacity-70">
+          Real-time poker functionality will be implemented here.
+        </p>
+      </div>
+    <% else %>
+      <!-- User needs to identify themselves -->
+      <div class="bg-base-100 rounded-lg shadow-md p-6 border border-base-300">
+        <h2 class="text-xl font-semibold text-base-content mb-4">Join Planning Session</h2>
+        <p class="text-base-content opacity-70 mb-6">
+          Please enter your name to join this planning poker session.
+        </p>
+
+        <.form for={@form} id="user-identification-form" phx-submit="identify_user">
+          <div class="space-y-4">
+            <div>
+              <.input
+                field={@form[:name]}
+                type="text"
+                label="Your Name"
+                placeholder="Enter your name"
+                required
+              />
+            </div>
+
+            <div class="flex justify-end pt-4">
+              <button type="submit" class="btn btn-primary">
+                Join Session
+              </button>
+            </div>
+          </div>
+        </.form>
+      </div>
+    <% end %>
+  </div>
+</Layouts.app>

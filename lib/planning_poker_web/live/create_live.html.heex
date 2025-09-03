@@ -8,13 +8,13 @@
     </div>
 
     <div class="bg-base-100 rounded-lg shadow-md border border-base-300">
-      <.form for={@form} id="create-game-form" phx-change="validate" phx-submit="create">
+      <.form for={@form} id="create-poker-form" phx-change="validate" phx-submit="create">
         <div class="p-6 space-y-6">
           <div>
             <.input
               field={@form[:name]}
               type="text"
-              label="Game Title"
+              label="Poker Title"
               placeholder="Planning Session 2024"
               required
             />
@@ -92,33 +92,6 @@
               <% end %>
             </div>
           </div>
-
-          <div>
-            <.input
-              field={@form[:all_moderators]}
-              type="checkbox"
-              label="All users are moderators"
-            />
-            <p class="mt-2 text-sm text-base-content opacity-60">
-              When checked, all users joining will automatically be moderators.
-            </p>
-          </div>
-
-          <div :if={!@form[:all_moderators].value}>
-            <.input
-              field={@form[:secret]}
-              type="text"
-              label="Moderator Secret"
-              placeholder="Enter a secure secret for moderator access"
-              required
-            />
-            <p class="mt-2 text-sm text-base-content opacity-60">
-              Used to identify the moderator. Must contain lowercase, uppercase, numbers, special characters. Min 16, max 100 chars.
-            </p>
-          </div>
-          
-          <%!-- Hidden secret field when all users are moderators --%>
-
           <div>
             <.input
               field={@form[:moderator_email]}

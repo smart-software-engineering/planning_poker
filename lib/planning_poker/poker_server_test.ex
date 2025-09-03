@@ -8,8 +8,8 @@ defmodule PlanningPoker.PokerServerTest do
   Used for testing to avoid database ownership and process isolation issues.
   """
 
-  # Store game states in ETS for test isolation
-  @table_name :test_game_states
+  # Store poker states in ETS for test isolation
+  @table_name :test_poker_states
 
   def find_or_start(poker_id) do
     # Ensure ETS table exists
@@ -17,23 +17,23 @@ defmodule PlanningPoker.PokerServerTest do
 
     case Poker.get_poker(poker_id) do
       nil ->
-        {:error, :game_not_found}
+        {:error, :poker_not_found}
 
-      game ->
-        # Store initial game state
-        game_state = %{
-          poker: game,
+      poker ->
+        # Store initial poker state
+        poker_state = %{
+          poker: poker,
           users: %{},
           created_at: DateTime.utc_now(),
           last_activity: DateTime.utc_now()
         }
 
-        :ets.insert(@table_name, {poker_id, game_state})
+        :ets.insert(@table_name, {poker_id, poker_state})
         :ok
     end
   end
 
-  def get_game_state(poker_id) do
+  def get_poker_state(poker_id) do
     ensure_table_exists()
 
     case :ets.lookup(@table_name, poker_id) do
@@ -42,7 +42,7 @@ defmodule PlanningPoker.PokerServerTest do
     end
   end
 
-  def add_user(poker_id, user_name, user_role) do
+  def add_user(poker_id, user_name) do
     ensure_table_exists()
 
     case :ets.lookup(@table_name, poker_id) do
@@ -50,7 +50,6 @@ defmodule PlanningPoker.PokerServerTest do
         updated_users =
           Map.put(state.users, user_name, %{
             name: user_name,
-            role: user_role,
             joined_at: DateTime.utc_now()
           })
 
@@ -79,7 +78,7 @@ defmodule PlanningPoker.PokerServerTest do
   end
 
   def get_users(poker_id) do
-    case get_game_state(poker_id) do
+    case get_poker_state(poker_id) do
       {:ok, state} -> {:ok, state.users}
       error -> error
     end

@@ -13,14 +13,14 @@ defmodule PlanningPokerWeb.PageController do
 
       {:error, _} ->
         conn
-        |> put_flash(:error, "Invalid game ID format. Please enter a valid UUID.")
+        |> put_flash(:error, "Invalid poker ID format. Please enter a valid UUID.")
         |> redirect(to: ~p"/")
     end
   end
 
   def join(conn, _params) do
     conn
-    |> put_flash(:error, "Game ID is required")
+    |> put_flash(:error, "Poker ID is required")
     |> redirect(to: ~p"/")
   end
 

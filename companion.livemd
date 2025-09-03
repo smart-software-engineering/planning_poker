@@ -7,5 +7,5 @@
 ```
 
 ```elixir
-PlanningPoker.GameSupervisor.list_games()
+PlanningPoker.PokerSupervisor.list_poker_sessions()
 ```

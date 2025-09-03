@@ -9,7 +9,7 @@ defmodule PlanningPokerWeb.PageControllerTest do
       assert response =~ "Create a planning poker"
     end
 
-    test "renders join game form", %{conn: conn} do
+    test "renders join poker form", %{conn: conn} do
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
 
@@ -18,7 +18,7 @@ defmodule PlanningPokerWeb.PageControllerTest do
   end
 
   describe "join action" do
-    test "redirects to poker game with valid UUID", %{conn: conn} do
+    test "redirects to poker session with valid UUID", %{conn: conn} do
       valid_uuid = "550e8400-e29b-41d4-a716-446655440000"
 
       conn = post(conn, ~p"/join", %{"uuid" => valid_uuid})
@@ -32,21 +32,21 @@ defmodule PlanningPokerWeb.PageControllerTest do
       conn = post(conn, ~p"/join", %{"uuid" => invalid_uuid})
 
       assert redirected_to(conn) == ~p"/"
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Invalid game ID format"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Invalid poker ID format"
     end
 
     test "redirects to home with error for empty UUID", %{conn: conn} do
       conn = post(conn, ~p"/join", %{"uuid" => ""})
 
       assert redirected_to(conn) == ~p"/"
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Game ID is required"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Poker ID is required"
     end
 
     test "redirects to home with error when UUID is missing", %{conn: conn} do
       conn = post(conn, ~p"/join", %{})
 
       assert redirected_to(conn) == ~p"/"
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Game ID is required"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Poker ID is required"
     end
 
     test "normalizes UUID to lowercase", %{conn: conn} do

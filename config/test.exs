@@ -1,8 +1,5 @@
 import Config
 
-# Only in tests, remove the complexity from the password hashing algorithm
-config :bcrypt_elixir, :log_rounds, 1
-
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used
@@ -36,7 +33,7 @@ config :logger, level: :warning
 config :phoenix, :plug_init_mode, :runtime
 
 # Use test PokerServer implementation
-config :planning_poker, :game_server, PlanningPoker.PokerServerTest
+config :planning_poker, :poker_server, PlanningPoker.PokerServerTest
 
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,

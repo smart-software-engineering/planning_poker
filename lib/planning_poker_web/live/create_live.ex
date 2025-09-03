@@ -2,14 +2,14 @@ defmodule PlanningPokerWeb.CreateLive do
   use PlanningPokerWeb, :live_view
 
   alias PlanningPoker.Poker
-  alias PlanningPokerWeb.Forms.CreateGameForm
+  alias PlanningPokerWeb.Forms.CreatePokerForm
 
   def mount(_params, _session, socket) do
-    changeset = CreateGameForm.changeset(%CreateGameForm{})
+    changeset = CreatePokerForm.changeset(%CreatePokerForm{})
 
     {:ok,
      socket
-     |> assign(:page_title, "Create Game")
+     |> assign(:page_title, "Create Poker")
      |> assign(:form, to_form(changeset))
      |> assign(:preview_html, "")
      |> assign(:active_tab, "edit")}
@@ -19,10 +19,10 @@ defmodule PlanningPokerWeb.CreateLive do
     {:noreply, assign(socket, :active_tab, tab)}
   end
 
-  def handle_event("validate", %{"create_game_form" => form_params}, socket) do
+  def handle_event("validate", %{"create_poker_form" => form_params}, socket) do
     changeset =
-      %CreateGameForm{}
-      |> CreateGameForm.changeset(form_params)
+      %CreatePokerForm{}
+      |> CreatePokerForm.changeset(form_params)
       |> Map.put(:action, :validate)
 
     preview_html =
@@ -45,38 +45,29 @@ defmodule PlanningPokerWeb.CreateLive do
 
   def handle_event("validate", _params, socket) do
     changeset =
-      %CreateGameForm{}
-      |> CreateGameForm.changeset(%{})
+      %CreatePokerForm{}
+      |> CreatePokerForm.changeset(%{})
       |> Map.put(:action, :validate)
 
     {:noreply, assign(socket, :form, to_form(changeset))}
   end
 
-  def handle_event("create", %{"create_game_form" => form_params}, socket) do
-    changeset = CreateGameForm.changeset(%CreateGameForm{}, form_params)
+  def handle_event("create", %{"create_poker_form" => form_params}, socket) do
+    changeset = CreatePokerForm.changeset(%CreatePokerForm{}, form_params)
 
     if changeset.valid? do
       # Convert form data to poker creation params
-      data = Ecto.Changeset.apply_changes(changeset)
-      
-      # Set default secret if all_moderators is true
-      final_params = 
-        data
+      final_params =
+        changeset
+        |> Ecto.Changeset.apply_changes()
         |> Map.from_struct()
-        |> then(fn params ->
-          if params.all_moderators do
-            Map.put(params, :secret, generate_default_secret())
-          else
-            Map.put(params, :secret, params.secret)
-          end
-        end)
 
       case Poker.create_poker(final_params) do
-        {:ok, game} ->
-          {:noreply, push_navigate(socket, to: ~p"/poker/#{game.id}")}
+        {:ok, poker} ->
+          {:noreply, push_navigate(socket, to: ~p"/poker/#{poker.id}")}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, "Failed to create game. Please try again.")}
+          {:noreply, put_flash(socket, :error, "Failed to create poker. Please try again.")}
       end
     else
       {:noreply, assign(socket, :form, to_form(changeset))}
@@ -85,19 +76,10 @@ defmodule PlanningPokerWeb.CreateLive do
 
   def handle_event("create", _params, socket) do
     changeset =
-      %CreateGameForm{}
-      |> CreateGameForm.changeset(%{})
+      %CreatePokerForm{}
+      |> CreatePokerForm.changeset(%{})
       |> Map.put(:action, :validate)
 
     {:noreply, assign(socket, :form, to_form(changeset))}
-  end
-
-  defp generate_default_secret do
-    # Generate a 24-character secure secret with mixed case, numbers, and safe special chars
-    chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*-_+="
-
-    for _ <- 1..24, into: "" do
-      <<Enum.random(String.to_charlist(chars))>>
-    end
   end
 end

@@ -8,13 +8,13 @@ defmodule PlanningPoker.PokerServer do
   ## Client API
 
   @doc """
-  Starts a PokerServer for the given poker game ID.
+  Starts a PokerServer for the given poker session ID.
   Returns {:ok, pid} if started successfully, {:error, reason} otherwise.
   """
   def start_link(poker_id) do
     case Poker.get_poker(poker_id) do
       nil ->
-        {:error, :game_not_found}
+        {:error, :poker_not_found}
 
       _poker ->
         GenServer.start_link(__MODULE__, poker_id, name: global_name(poker_id))
@@ -22,35 +22,35 @@ defmodule PlanningPoker.PokerServer do
   end
 
   @doc """
-  Gets the current game state from the PokerServer.
+  Gets the current poker state from the PokerServer.
   """
   @impl true
-  def get_game_state(poker_id) do
+  def get_poker_state(poker_id) do
     case :global.whereis_name(global_key(poker_id)) do
       :undefined ->
         {:error, :server_not_found}
 
       pid ->
-        GenServer.call(pid, :get_game_state)
+        GenServer.call(pid, :get_poker_state)
     end
   end
 
   @doc """
-  Adds a user to the game session.
+  Adds a user to the poker session.
   """
   @impl true
-  def add_user(poker_id, user_name, user_role) do
+  def add_user(poker_id, user_name) do
     case :global.whereis_name(global_key(poker_id)) do
       :undefined ->
         {:error, :server_not_found}
 
       pid ->
-        GenServer.call(pid, {:add_user, user_name, user_role})
+        GenServer.call(pid, {:add_user, user_name})
     end
   end
 
   @doc """
-  Removes a user from the game session.
+  Removes a user from the poker session.
   """
   @impl true
   def remove_user(poker_id, user_name) do
@@ -64,7 +64,7 @@ defmodule PlanningPoker.PokerServer do
   end
 
   @doc """
-  Gets all active users in the game.
+  Gets all active users in the poker session.
   """
   @impl true
   def get_users(poker_id) do
@@ -85,7 +85,7 @@ defmodule PlanningPoker.PokerServer do
     case :global.whereis_name(global_key(poker_id)) do
       :undefined ->
         # Try to start the server via the supervisor
-        case PlanningPoker.PokerSupervisor.start_game(poker_id) do
+        case PlanningPoker.PokerSupervisor.start_poker(poker_id) do
           {:ok, _pid} -> :ok
           {:error, {:already_started, _pid}} -> :ok
           {:error, reason} -> {:error, reason}
@@ -102,36 +102,35 @@ defmodule PlanningPoker.PokerServer do
   def init(poker_id) do
     Logger.info("Starting PokerServer for poker #{poker_id}")
 
-    case load_game_from_database(poker_id) do
-      {:ok, game_state} ->
-        {:ok, game_state}
+    case load_poker_from_database(poker_id) do
+      {:ok, poker_state} ->
+        {:ok, poker_state}
 
       {:error, reason} ->
-        Logger.error("Failed to load game #{poker_id}: #{inspect(reason)}")
+        Logger.error("Failed to load poker #{poker_id}: #{inspect(reason)}")
         {:stop, reason}
     end
   end
 
   @impl true
-  def handle_call(:get_game_state, _from, state) do
+  def handle_call(:get_poker_state, _from, state) do
     {:reply, {:ok, state}, state}
   end
 
   @impl true
-  def handle_call({:add_user, user_name, user_role}, _from, state) do
+  def handle_call({:add_user, user_name}, _from, state) do
     updated_users =
       Map.put(state.users, user_name, %{
         name: user_name,
-        role: user_role,
         joined_at: DateTime.utc_now()
       })
 
     updated_state = %{state | users: updated_users}
 
-    Logger.info("User #{user_name} (#{user_role}) joined game #{state.poker.id}")
+    Logger.info("User #{user_name} joined poker #{state.poker.id}")
 
     # Broadcast user joined event to all LiveViews
-    broadcast_update(state.poker.id, {:user_joined, user_name, user_role})
+    broadcast_update(state.poker.id, {:user_joined, user_name})
 
     {:reply, :ok, updated_state}
   end
@@ -141,7 +140,7 @@ defmodule PlanningPoker.PokerServer do
     updated_users = Map.delete(state.users, user_name)
     updated_state = %{state | users: updated_users}
 
-    Logger.info("User #{user_name} left game #{state.poker.id}")
+    Logger.info("User #{user_name} left poker #{state.poker.id}")
 
     # Broadcast user left event to all LiveViews
     broadcast_update(state.poker.id, {:user_left, user_name})
@@ -162,21 +161,21 @@ defmodule PlanningPoker.PokerServer do
 
   ## Private Functions
 
-  defp load_game_from_database(poker_id) do
+  defp load_poker_from_database(poker_id) do
     case Poker.get_poker(poker_id) do
       nil ->
-        {:error, :game_not_found}
+        {:error, :poker_not_found}
 
       poker ->
         # poker already has votings preloaded from context
-        game_state = %{
+        poker_state = %{
           poker: poker,
           users: %{},
           created_at: DateTime.utc_now(),
           last_activity: DateTime.utc_now()
         }
 
-        {:ok, game_state}
+        {:ok, poker_state}
     end
   end
 
@@ -185,13 +184,13 @@ defmodule PlanningPoker.PokerServer do
   end
 
   defp global_key(poker_id) do
-    {:game_server, poker_id}
+    {:poker_server, poker_id}
   end
 
   defp broadcast_update(poker_id, message) do
     Phoenix.PubSub.broadcast(
       PlanningPoker.PubSub,
-      "game:#{poker_id}",
+      "poker:#{poker_id}",
       message
     )
   end

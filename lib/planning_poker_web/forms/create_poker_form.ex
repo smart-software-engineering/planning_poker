@@ -1,25 +1,19 @@
-defmodule PlanningPoker.Poker.Poker do
+defmodule PlanningPokerWeb.Forms.CreatePokerForm do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @primary_key {:id, :binary_id, autogenerate: true}
-  @foreign_key_type :binary_id
-  schema "poker" do
+  @primary_key false
+  embedded_schema do
     field :name, :string
     field :description, :string
     field :moderator_email, :string
     field :card_type, :string, default: "fibonacci"
-
-    has_many :votings, PlanningPoker.Poker.Voting, preload_order: [asc: :position]
-
-    timestamps(type: :utc_datetime)
   end
 
-  @doc false
-  def changeset(poker, attrs) do
-    poker
+  def changeset(form, attrs \\ %{}) do
+    form
     |> cast(attrs, [:name, :description, :moderator_email, :card_type])
-    |> validate_required([:name])
+    |> validate_required([:name, :moderator_email])
     |> validate_inclusion(:card_type, ["fibonacci", "t-shirt"])
     |> validate_format(:moderator_email, ~r/^[^\s]+@[^\s]+$/,
       message: "must have the @ sign and no spaces"

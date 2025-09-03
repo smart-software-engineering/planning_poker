@@ -14,7 +14,7 @@ defmodule PlanningPoker.PokerSupervisor do
   @doc """
   Starts a PokerServer for the given poker ID.
   """
-  def start_game(poker_id) do
+  def start_poker(poker_id) do
     child_spec = %{
       id: PlanningPoker.PokerServer,
       start: {PlanningPoker.PokerServer, :start_link, [poker_id]},
@@ -39,8 +39,8 @@ defmodule PlanningPoker.PokerSupervisor do
   @doc """
   Stops the PokerServer for the given poker ID.
   """
-  def stop_game(poker_id) do
-    case :global.whereis_name({:game_server, poker_id}) do
+  def stop_poker(poker_id) do
+    case :global.whereis_name({:poker_server, poker_id}) do
       :undefined ->
         {:error, :not_found}
 
@@ -50,12 +50,12 @@ defmodule PlanningPoker.PokerSupervisor do
   end
 
   @doc """
-  Lists all currently running games.
+  Lists all currently running poker sessions.
   """
-  def list_games do
+  def list_poker_sessions do
     DynamicSupervisor.which_children(__MODULE__)
     |> Enum.map(fn {_id, pid, _type, _modules} ->
-      case GenServer.call(pid, :get_game_state) do
+      case GenServer.call(pid, :get_poker_state) do
         {:ok, state} -> {state.poker.id, pid}
         _ -> nil
       end

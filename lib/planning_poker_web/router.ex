@@ -20,7 +20,7 @@ defmodule PlanningPokerWeb.Router do
     get "/", PageController, :home
     post "/join", PageController, :join
     live "/new", CreateLive
-    live "/poker/:id", GameLive
+    live "/poker/:id", PokerLive
   end
 
   # Other scopes may use custom stacks.

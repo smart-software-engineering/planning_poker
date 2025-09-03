@@ -13,9 +13,7 @@ defmodule PlanningPoker.PokerFixtures do
       |> Enum.into(%{
         description: "some description",
         moderator_email: "sample@example.xyz",
-        name: "some name",
-        secret: "ValidFixtureSecret123!",
-        all_moderators: false
+        name: "some name"
       })
       |> PlanningPoker.Poker.create_poker()
 
