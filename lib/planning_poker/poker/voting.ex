@@ -10,7 +10,7 @@ defmodule PlanningPoker.Poker.Voting do
     field :votes, {:array, :map}, default: []
     field :position, :integer
 
-    belongs_to :game, PlanningPoker.Poker.Game, type: :binary_id
+    belongs_to :poker, PlanningPoker.Poker.Poker, type: :binary_id
 
     timestamps(type: :utc_datetime)
   end
@@ -18,9 +18,9 @@ defmodule PlanningPoker.Poker.Voting do
   @doc false
   def changeset(voting, attrs) do
     voting
-    |> cast(attrs, [:title, :link, :description, :decision, :votes, :position, :game_id])
-    |> validate_required([:title, :position, :game_id])
+    |> cast(attrs, [:title, :link, :description, :decision, :votes, :position, :poker_id])
+    |> validate_required([:title, :position, :poker_id])
     |> validate_length(:decision, max: 100)
-    |> foreign_key_constraint(:game_id)
+    |> foreign_key_constraint(:poker_id)
   end
 end

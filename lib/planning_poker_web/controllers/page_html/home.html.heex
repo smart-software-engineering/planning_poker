@@ -1,64 +1,58 @@
-<Layouts.flash_group flash={@flash} />
-<div class="px-4 py-10 sm:px-6 sm:py-28 lg:px-8 xl:px-28 xl:py-32">
-  <div class="mx-auto max-w-4xl">
-    <div class="mt-10 flex justify-between items-center">
-      <h1 class="flex items-center text-sm font-semibold leading-6">
-        Planning Poker Demo Application
-      </h1>
-      <Layouts.theme_toggle />
-    </div>
+<Layouts.app flash={@flash}>
+  <div class="px-4 py-10 sm:px-6 sm:py-28 lg:px-8 xl:px-28 xl:py-32">
+    <div class="mx-auto max-w-4xl">
+      <div class="mt-10">
+        <h1 class="flex items-center text-sm font-semibold leading-6">
+          Planning Poker Demo Application
+        </h1>
+      </div>
 
-    <p class="text-[2rem] mt-4 font-semibold leading-10 tracking-tighter text-balance">
-      A very simple daily poker to demonstrate the features of Phoenix LiveView.
-    </p>
-    <div class="py-8">
-      <.button navigate={~p"/poker/new"} class="btn btn-primary btn-lg">
-        Create a planning poker
-      </.button>
-    </div>
+      <p class="text-[2rem] mt-4 font-semibold leading-10 tracking-tighter text-balance">
+        A very simple daily poker to demonstrate the features of Phoenix LiveView.
+      </p>
+      <div class="py-8">
+        <.button navigate={~p"/new"} class="btn btn-primary btn-lg">
+          Create a planning poker
+        </.button>
+      </div>
 
-    <div class="divider">OR</div>
+      <div class="divider">OR</div>
 
-    <div class="py-4">
-      <.form for={%{}} action={~p"/join"} method="post">
-        <div class="flex gap-2 items-center">
-          <p class="text-sm font-semibold flex-none">Join a game:</p>
-          <input
-            type="text"
-            name="uuid"
-            placeholder="0000-0000-0000-0000-0000-0000-0000-0000"
-            class="input input-bordered flex-1"
-            pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-            required
-          />
-          <button type="submit" class="btn btn-primary flex-none">Join</button>
-        </div>
-      </.form>
-    </div>
+      <div class="py-4">
+        <.form for={%{}} action={~p"/join"} method="post">
+          <div class="flex gap-2 items-center">
+            <p class="text-sm font-semibold flex-none">Join a game:</p>
+            <input
+              type="text"
+              name="uuid"
+              placeholder="0000-0000-0000-0000-0000-0000-0000-0000"
+              class="input input-bordered flex-1"
+              pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+              required
+            />
+            <button type="submit" class="btn btn-primary flex-none">Join</button>
+          </div>
+        </.form>
+      </div>
 
-    <div class="flex">
-      <div class="w-full sm:w-auto">
-        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
-          <a
-            href="https://github.com/titaniumcoder/planning_poker"
-            class="group relative rounded-box px-6 py-4 text-sm font-semibold leading-6 sm:py-6"
-          >
-            <span class="absolute inset-0 rounded-box bg-base-200 transition group-hover:bg-base-300 sm:group-hover:scale-105">
-            </span>
-            <span class="relative flex items-center gap-4 sm:flex-col">
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="h-6 w-6">
-                <path
-                  fill="currentColor"
-                  fill-rule="evenodd"
-                  clip-rule="evenodd"
-                  d="M12 0C5.37 0 0 5.506 0 12.303c0 5.445 3.435 10.043 8.205 11.674.6.107.825-.262.825-.585 0-.292-.015-1.261-.015-2.291C6 21.67 5.22 20.346 4.98 19.654c-.135-.354-.72-1.446-1.23-1.738-.42-.23-1.02-.8-.015-.815.945-.015 1.62.892 1.845 1.261 1.08 1.86 2.805 1.338 3.495 1.015.105-.8.42-1.338.765-1.645-2.67-.308-5.46-1.37-5.46-6.075 0-1.338.465-2.446 1.23-3.307-.12-.308-.54-1.569.12-3.26 0 0 1.005-.323 3.3 1.26.96-.276 1.98-.415 3-.415s2.04.139 3 .416c2.295-1.6 3.3-1.261 3.3-1.261.66 1.691.24 2.952.12 3.26.765.861 1.23 1.953 1.23 3.307 0 4.721-2.805 5.767-5.475 6.075.435.384.81 1.122.81 2.276 0 1.645-.015 2.968-.015 3.383 0 .323.225.707.825.585a12.047 12.047 0 0 0 5.919-4.489A12.536 12.536 0 0 0 24 12.304C24 5.505 18.63 0 12 0Z"
-                />
-              </svg>
-              Source Code
-            </span>
-          </a>
-        </div>
+      <div class="relative mt-10 min-h-[120px]">
+        <a
+          href="https://github.com/titaniumcoder/planning_poker"
+          class="group absolute bottom-0 right-0 rounded-box px-6 py-4 text-sm font-semibold leading-6 bg-base-200 transition hover:bg-base-300 hover:scale-105"
+        >
+          <span class="flex items-center gap-4">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="h-6 w-6">
+              <path
+                fill="currentColor"
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M12 0C5.37 0 0 5.506 0 12.303c0 5.445 3.435 10.043 8.205 11.674.6.107.825-.262.825-.585 0-.292-.015-1.261-.015-2.291C6 21.67 5.22 20.346 4.98 19.654c-.135-.354-.72-1.446-1.23-1.738-.42-.23-1.02-.8-.015-.815.945-.015 1.62.892 1.845 1.261 1.08 1.86 2.805 1.338 3.495 1.015.105-.8.42-1.338.765-1.645-2.67-.308-5.46-1.37-5.46-6.075 0-1.338.465-2.446 1.23-3.307-.12-.308-.54-1.569.12-3.26 0 0 1.005-.323 3.3 1.26.96-.276 1.98-.415 3-.415s2.04.139 3 .416c2.295-1.6 3.3-1.261 3.3-1.261.66 1.691.24 2.952.12 3.26.765.861 1.23 1.953 1.23 3.307 0 4.721-2.805 5.767-5.475 6.075.435.384.81 1.122.81 2.276 0 1.645-.015 2.968-.015 3.383 0 .323.225.707.825.585a12.047 12.047 0 0 0 5.919-4.489A12.536 12.536 0 0 0 24 12.304C24 5.505 18.63 0 12 0Z"
+              />
+            </svg>
+            Source Code
+          </span>
+        </a>
       </div>
     </div>
   </div>
-</div>
+</Layouts.app>

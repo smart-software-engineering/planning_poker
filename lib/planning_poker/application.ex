@@ -12,6 +12,8 @@ defmodule PlanningPoker.Application do
       PlanningPoker.Repo,
       {DNSCluster, query: Application.get_env(:planning_poker, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: PlanningPoker.PubSub},
+      # Game management
+      {PlanningPoker.PokerSupervisor, []},
       # Start a worker by calling: PlanningPoker.Worker.start_link(arg)
       # {PlanningPoker.Worker, arg},
       # Start to serve requests, typically the last entry

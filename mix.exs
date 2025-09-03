@@ -21,7 +21,7 @@ defmodule PlanningPoker.MixProject do
   def application do
     [
       mod: {PlanningPoker.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :bcrypt_elixir]
     ]
   end
 
@@ -67,7 +67,9 @@ defmodule PlanningPoker.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:tidewave, "~> 0.4", only: :dev},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:earmark, "~> 1.4"},
+      {:bcrypt_elixir, "~> 3.0"}
     ]
   end
 

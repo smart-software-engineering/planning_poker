@@ -103,3 +103,64 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* Markdown preview styles */
+.markdown-preview {
+  line-height: 1.7;
+}
+
+.markdown-preview h1 {
+  @apply text-2xl font-bold mb-4 mt-6 text-base-content;
+}
+
+.markdown-preview h2 {
+  @apply text-xl font-bold mb-3 mt-5 text-base-content;
+}
+
+.markdown-preview h3 {
+  @apply text-lg font-bold mb-2 mt-4 text-base-content;
+}
+
+.markdown-preview h4 {
+  @apply text-base font-bold mb-2 mt-3 text-base-content;
+}
+
+.markdown-preview p {
+  @apply mb-4 text-base-content;
+}
+
+.markdown-preview ul {
+  @apply list-disc list-inside mb-4 ml-4 text-base-content;
+}
+
+.markdown-preview ol {
+  @apply list-decimal list-inside mb-4 ml-4 text-base-content;
+}
+
+.markdown-preview li {
+  @apply mb-1 text-base-content;
+}
+
+.markdown-preview strong {
+  @apply font-bold text-base-content;
+}
+
+.markdown-preview em {
+  @apply italic text-base-content;
+}
+
+.markdown-preview blockquote {
+  @apply border-l-4 border-base-300 pl-4 ml-4 mb-4 italic opacity-75 text-base-content;
+}
+
+.markdown-preview code {
+  @apply bg-base-200 text-base-content px-1 py-0.5 rounded text-sm font-mono;
+}
+
+.markdown-preview pre {
+  @apply bg-base-200 text-base-content p-4 rounded mb-4 overflow-x-auto;
+}
+
+.markdown-preview pre code {
+  @apply bg-transparent p-0;
+}

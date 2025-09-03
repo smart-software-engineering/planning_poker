@@ -1,0 +1,65 @@
+defmodule PlanningPoker.PokerSupervisor do
+  use DynamicSupervisor
+  require Logger
+
+  def start_link(init_arg) do
+    DynamicSupervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
+  end
+
+  @impl true
+  def init(_init_arg) do
+    DynamicSupervisor.init(strategy: :one_for_one)
+  end
+
+  @doc """
+  Starts a PokerServer for the given poker ID.
+  """
+  def start_game(poker_id) do
+    child_spec = %{
+      id: PlanningPoker.PokerServer,
+      start: {PlanningPoker.PokerServer, :start_link, [poker_id]},
+      restart: :transient
+    }
+
+    case DynamicSupervisor.start_child(__MODULE__, child_spec) do
+      {:ok, pid} ->
+        Logger.info("Started PokerServer for poker #{poker_id}")
+        {:ok, pid}
+
+      {:error, {:already_started, pid}} ->
+        Logger.debug("PokerServer for poker #{poker_id} already running")
+        {:ok, pid}
+
+      {:error, reason} ->
+        Logger.error("Failed to start PokerServer for poker #{poker_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Stops the PokerServer for the given poker ID.
+  """
+  def stop_game(poker_id) do
+    case :global.whereis_name({:game_server, poker_id}) do
+      :undefined ->
+        {:error, :not_found}
+
+      pid ->
+        DynamicSupervisor.terminate_child(__MODULE__, pid)
+    end
+  end
+
+  @doc """
+  Lists all currently running games.
+  """
+  def list_games do
+    DynamicSupervisor.which_children(__MODULE__)
+    |> Enum.map(fn {_id, pid, _type, _modules} ->
+      case GenServer.call(pid, :get_game_state) do
+        {:ok, state} -> {state.poker.id, pid}
+        _ -> nil
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+end
