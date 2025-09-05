@@ -2,48 +2,110 @@ defmodule PlanningPokerWeb.PokerLive do
   use PlanningPokerWeb, :live_view
 
   alias PlanningPoker.Poker
-  alias PlanningPokerWeb.Forms.JoinPokerForm
+  alias PlanningPokerWeb.Forms.{JoinPokerForm, CreatePokerForm}
 
-  # Get the PokerServer implementation from config
-  @poker_server Application.compile_env(:planning_poker, :poker_server)
+  def mount(_params, _session, socket) do
+    {:ok, socket}
+  end
 
-  def mount(%{"id" => id}, _session, socket) do
+  def handle_params(params, _url, socket) do
+    case params do
+      %{"id" => id} ->
+        # Join existing poker
+        handle_join_poker(id, socket)
+
+      %{} ->
+        # Create new poker flow
+        handle_create_poker(socket)
+    end
+  end
+
+  defp handle_join_poker(id, socket) do
     case Poker.get_poker(id) do
       nil ->
-        {:ok, push_navigate(socket, to: ~p"/")}
+        # Invalid ID - redirect to create mode
+        {:noreply, push_patch(socket, to: ~p"/poker")}
 
       poker ->
-        # Subscribe to poker updates (only for real PokerServer, not test)
-        unless @poker_server == PlanningPoker.PokerServerTest do
-          Phoenix.PubSub.subscribe(PlanningPoker.PubSub, "poker:#{id}")
-        end
+        Phoenix.PubSub.subscribe(PlanningPoker.PubSub, "poker:#{id}")
 
-        # Find or start the PokerServer using injected implementation
-        case @poker_server.find_or_start(id) do
-          :ok ->
-            {:ok,
-             socket
-             |> assign(:page_title, poker.name)
-             |> assign(:poker_id, id)
-             |> assign(:poker, poker)
-             |> assign(:poker_url, url(~p"/poker/#{id}"))
-             |> assign(:user_identified, false)
-             |> assign(:user_name, nil)
-             |> assign(:users, %{})
-             |> assign(:poker_state, nil)
-             |> assign(:form, to_form(JoinPokerForm.changeset(%JoinPokerForm{})))}
+        # Check if user was already identified from create flow
+        user_identified = socket.assigns[:user_identified] || false
+        user_name = socket.assigns[:user_name]
 
-          {:error, reason} ->
-            {:ok,
-             socket
-             |> put_flash(:error, "Failed to start poker session: #{inspect(reason)}")
-             |> push_navigate(to: ~p"/")}
-        end
+        {:noreply,
+         socket
+         |> assign(:page_title, poker.name)
+         |> assign(:poker_id, id)
+         |> assign(:poker, poker)
+         |> assign(:poker_url, url(~p"/poker/#{id}"))
+         |> assign(:user_identified, user_identified)
+         |> assign(:user_name, user_name)
+         |> assign(:users, poker.poker_users)
+         |> assign(:mode, :join)
+         |> assign(:form, to_form(JoinPokerForm.changeset(%JoinPokerForm{})))}
+    end
+  end
+
+  defp handle_create_poker(socket) do
+    {:noreply,
+     socket
+     |> assign(:page_title, "Create Poker")
+     |> assign(:mode, :create)
+     |> assign(:form, to_form(CreatePokerForm.changeset(%CreatePokerForm{})))}
+  end
+
+  def handle_event("validate", %{"create_poker_form" => form_params}, %{assigns: %{mode: :create}} = socket) do
+    changeset =
+      %CreatePokerForm{}
+      |> CreatePokerForm.changeset(form_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :form, to_form(changeset))}
+  end
+
+  def handle_event("validate", %{"join_poker_form" => form_params}, %{assigns: %{mode: :join}} = socket) do
+    changeset =
+      %JoinPokerForm{}
+      |> JoinPokerForm.changeset(form_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :form, to_form(changeset))}
+  end
+
+  def handle_event("create_poker", %{"create_poker_form" => form_params}, socket) do
+    changeset = CreatePokerForm.changeset(%CreatePokerForm{}, form_params)
+
+    if changeset.valid? do
+      data = Ecto.Changeset.apply_changes(changeset)
+
+      case Poker.create_poker(%{name: data.name, card_type: data.card_type}) do
+        {:ok, poker} ->
+          # Join the user to the newly created poker
+          case Poker.join_poker_user(poker, data.username) do
+            {:ok, _user} ->
+              # Set user as identified and update URL
+              {:noreply,
+               socket
+               |> assign(:user_identified, true)
+               |> assign(:user_name, data.username)
+               |> push_patch(to: ~p"/poker/#{poker.id}")
+               |> put_flash(:info, "Welcome to your new poker session, #{data.username}!")}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Failed to join the poker session")}
+          end
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, "Failed to create poker session. Please try again.")}
+      end
+    else
+      {:noreply, assign(socket, :form, to_form(changeset))}
     end
   end
 
   def handle_event("identify_user", %{"join_poker_form" => form_params}, socket) do
-    %{poker_id: poker_id} = socket.assigns
+    %{poker: poker} = socket.assigns
 
     changeset = JoinPokerForm.changeset(%JoinPokerForm{}, form_params)
 
@@ -51,77 +113,113 @@ defmodule PlanningPokerWeb.PokerLive do
       data = Ecto.Changeset.apply_changes(changeset)
       user_name = String.trim(data.name)
 
-      handle_user_identification(socket, poker_id, user_name)
+      case Poker.join_poker_user(poker, user_name) do
+        {:ok, _user} ->
+          users = Poker.get_poker_users(poker.id)
+          welcome_message = "Welcome, #{user_name}!"
+
+          {:noreply,
+           socket
+           |> assign(:user_identified, true)
+           |> assign(:user_name, user_name)
+           |> assign(:users, users)
+           |> put_flash(:info, welcome_message)}
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          if changeset.errors[:username] do
+            {:noreply, put_flash(socket, :error, "Username already taken")}
+          else
+            {:noreply, put_flash(socket, :error, "Failed to join poker")}
+          end
+
+        {:error, reason} ->
+          {:noreply, put_flash(socket, :error, "Failed to join poker: #{inspect(reason)}")}
+      end
     else
       {:noreply, assign(socket, :form, to_form(changeset))}
     end
   end
 
+  def handle_event("toggle_session_state", _params, socket) do
+    %{poker: poker} = socket.assigns
+    
+    result = if PlanningPoker.Poker.closed?(poker) do
+      PlanningPoker.Poker.reopen_poker(poker)
+    else
+      PlanningPoker.Poker.close_poker(poker)
+    end
+
+    case result do
+      {:ok, updated_poker} ->
+        status = if PlanningPoker.Poker.closed?(updated_poker), do: "closed", else: "reopened"
+        {:noreply, 
+         socket
+         |> assign(:poker, updated_poker)
+         |> put_flash(:info, "Session #{status} successfully!")}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Failed to update session state")}
+    end
+  end
+
+  def handle_event("leave_session", _params, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/")}
+  end
+
+  def handle_event("toggle_mute", _params, socket) do
+    %{poker_id: poker_id, user_name: user_name} = socket.assigns
+
+    case Poker.toggle_mute_poker_user(poker_id, user_name) do
+      {:ok, _user} ->
+        {:noreply, socket}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to toggle mute: #{inspect(reason)}")}
+    end
+  end
+
   def terminate(_reason, socket) do
-    # Remove user from PokerServer when LiveView terminates
     if socket.assigns[:user_identified] && socket.assigns[:user_name] do
-      @poker_server.remove_user(socket.assigns.poker_id, socket.assigns.user_name)
+      Poker.leave_poker_user(socket.assigns.poker_id, socket.assigns.user_name)
     end
 
     :ok
   end
 
-  # Handle PubSub messages
   def handle_info({:user_joined, user_name}, socket) do
-    # Update users list when someone joins
-    case @poker_server.get_users(socket.assigns.poker_id) do
-      {:ok, users} ->
-        {:noreply,
-         socket
-         |> assign(:users, users)
-         |> put_flash(:info, "#{user_name} joined")}
-
-      _ ->
-        {:noreply, socket}
+    users = Poker.get_poker_users(socket.assigns.poker_id)
+    
+    # Don't show flash for current user - they already got welcome message
+    if user_name == socket.assigns[:user_name] do
+      {:noreply, assign(socket, :users, users)}
+    else
+      {:noreply,
+       socket
+       |> assign(:users, users)
+       |> put_flash(:info, "#{user_name} joined")}
     end
   end
 
   def handle_info({:user_left, user_name}, socket) do
-    # Update users list when someone leaves
-    case @poker_server.get_users(socket.assigns.poker_id) do
-      {:ok, users} ->
-        {:noreply,
-         socket
-         |> assign(:users, users)
-         |> put_flash(:info, "#{user_name} left")}
-
-      _ ->
-        {:noreply, socket}
-    end
+    users = Poker.get_poker_users(socket.assigns.poker_id)
+    {:noreply,
+     socket
+     |> assign(:users, users)
+     |> put_flash(:info, "#{user_name} left")}
   end
 
-  # Private helper to handle user identification and reduce nesting
-  defp handle_user_identification(socket, poker_id, user_name) do
-    case @poker_server.add_user(poker_id, user_name) do
-      :ok ->
-        handle_successful_user_addition(socket, poker_id, user_name)
-
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to join poker: #{inspect(reason)}")}
+  def handle_info({:user_mute_changed, user_name, muted}, socket) do
+    users = Poker.get_poker_users(socket.assigns.poker_id)
+    status = if muted, do: "muted", else: "unmuted"
+    flash_message = if user_name == socket.assigns.user_name do
+      "You are now #{status}"
+    else
+      "#{user_name} is now #{status}"
     end
-  end
-
-  # Private helper to handle successful user addition
-  defp handle_successful_user_addition(socket, poker_id, user_name) do
-    case @poker_server.get_poker_state(poker_id) do
-      {:ok, poker_state} ->
-        welcome_message = "Welcome, #{user_name}!"
-
-        {:noreply,
-         socket
-         |> assign(:user_identified, true)
-         |> assign(:user_name, user_name)
-         |> assign(:poker_state, poker_state)
-         |> assign(:users, poker_state.users)
-         |> put_flash(:info, welcome_message)}
-
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to load poker state: #{inspect(reason)}")}
-    end
+    
+    {:noreply,
+     socket
+     |> assign(:users, users)
+     |> put_flash(:info, flash_message)}
   end
 end

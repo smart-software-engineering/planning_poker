@@ -5,7 +5,6 @@ defmodule PlanningPoker.Poker.Voting do
   schema "votings" do
     field :title, :string
     field :link, :string
-    field :description, :string
     field :decision, :string
     field :votes, {:array, :map}, default: []
     field :position, :integer
@@ -18,7 +17,7 @@ defmodule PlanningPoker.Poker.Voting do
   @doc false
   def changeset(voting, attrs) do
     voting
-    |> cast(attrs, [:title, :link, :description, :decision, :votes, :position, :poker_id])
+    |> cast(attrs, [:title, :link, :decision, :votes, :position, :poker_id])
     |> validate_required([:title, :position, :poker_id])
     |> validate_length(:decision, max: 100)
     |> foreign_key_constraint(:poker_id)

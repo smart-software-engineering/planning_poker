@@ -32,9 +32,6 @@ config :logger, level: :warning
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
 
-# Use test PokerServer implementation
-config :planning_poker, :poker_server, PlanningPoker.PokerServerTest
-
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true

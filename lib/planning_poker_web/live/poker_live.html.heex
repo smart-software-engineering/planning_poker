@@ -1,151 +1,249 @@
 <Layouts.app flash={@flash}>
-  <div class="max-w-4xl mx-auto py-8 px-4">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-base-content mb-2">{@poker.name}</h1>
-      <%= if @poker.description do %>
-        <div class="markdown-preview text-base-content">
-          {raw(Earmark.as_html!(@poker.description))}
-        </div>
-      <% end %>
+  <div class="max-w-[1400px] mx-auto py-8 px-4">
+    
+    <%!-- Create Mode --%>
+    <div :if={@mode == :create} class="max-w-2xl mx-auto">
+      <div class="mb-8">
+        <h1 class="text-4xl font-bold text-base-content mb-4">Create Planning Poker</h1>
+        <p class="text-base-content opacity-70">
+          Create a new planning poker session and join it immediately.
+        </p>
+      </div>
+
+      <div class="bg-base-100 rounded-lg shadow-md p-6 border border-base-300">
+        <.form for={@form} id="create-poker-form" phx-submit="create_poker" phx-change="validate">
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <.input
+                  field={@form[:name]}
+                  type="text"
+                  label="Session Name"
+                  placeholder="Sprint 5 Planning"
+                  required
+                />
+              </div>
+              <div>
+                <.input
+                  field={@form[:card_type]}
+                  type="select"
+                  label="Card Type"
+                  options={[{"Fibonacci", "fibonacci"}, {"T-Shirt", "t-shirt"}]}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <.input
+                field={@form[:username]}
+                type="text"
+                label="Your Name"
+                placeholder="Enter your name"
+                required
+              />
+            </div>
+
+            <div>
+              <label class="flex items-start gap-3 cursor-pointer">
+                <.input
+                  field={@form[:privacy_agreement]}
+                  type="checkbox"
+                  class="checkbox checkbox-primary mt-1"
+                  required
+                />
+                <span class="text-base-content text-sm leading-relaxed">
+                  I agree to the
+                  <.link navigate={~p"/privacy"} target="_blank" class="link link-primary">
+                    data privacy policy
+                  </.link>
+                  and understand that my name and votes will be stored in the database during the session and deleted after 30 days of inactivity.
+                </span>
+              </label>
+            </div>
+
+            <div class="flex justify-end pt-4">
+              <button type="submit" class="btn btn-primary">
+                Create & Join Session
+              </button>
+            </div>
+          </div>
+        </.form>
+      </div>
     </div>
 
-    <%= if @user_identified do %>
-      <!-- User is identified, show main poker content -->
-      <div class="bg-base-100 rounded-lg shadow-md p-6 border border-base-300">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-semibold text-base-content">Welcome, {@user_name}!</h2>
-        </div>
-
-        <div class="flex items-baseline gap-4 text-sm mb-6">
-          <span class="text-base-content opacity-60">Poker ID:</span>
-          <span class="flex items-center gap-2 flex-grow">
-            <a
-              href={~p"/poker/#{@poker.id}"}
-              class="text-base-content font-mono hover:underline"
-              target="_blank"
-            >
-              {@poker.id}
-            </a>
+    <%!-- Join Mode - User Identified --%>
+    <div :if={@mode == :join && @user_identified} class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div class="lg:col-span-3">
+        <div class="mb-8 flex items-center justify-between">
+          <h1 class="text-4xl font-bold text-base-content">{@poker.name}</h1>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-base-content">Share:</span>
+            <input 
+              type="hidden" 
+              id="poker-url-input"
+              value={@poker_url}
+            />
             <button
               id="copy-poker-url"
               type="button"
-              class="p-1 hover:bg-base-200 rounded transition-colors cursor-pointer"
+              class="btn btn-sm btn-outline"
               phx-hook=".CopyToClipboard"
               data-copy-text={@poker_url}
               title="Copy URL"
             >
-              <.icon
-                name="hero-clipboard-document"
-                class="w-4 h-4 text-base-content opacity-60 hover:opacity-100"
-              />
+              <.icon name="hero-clipboard-document" class="w-4 h-4" />
             </button>
-          </span>
-          <span class="text-base-content capitalize">
-            {String.replace(@poker.card_type || "fibonacci", "-", " ")}
-          </span>
+          </div>
         </div>
 
-        <script :type={Phoenix.LiveView.ColocatedHook} name=".CopyToClipboard">
-          export default {
-            mounted() {
-              this.el.addEventListener("click", () => {
-                const textToCopy = this.el.dataset.copyText;
-                
-                if (textToCopy) {
-                  navigator.clipboard.writeText(textToCopy).then(() => {
-                    // Visual feedback - briefly change icon to checkmark
-                    const icon = this.el.querySelector('span[class*="hero-"]');
-                    if (icon) {
-                      const originalClasses = icon.className;
-                      
-                      // Change to checkmark icon temporarily
-                      icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-green-600');
-                      
-                      setTimeout(() => {
-                        // Restore clipboard icon
-                        icon.className = originalClasses;
-                      }, 1500);
-                    }
-                  }).catch(() => {
-                    // Fallback for older browsers
-                    const tempInput = document.createElement('input');
-                    tempInput.value = textToCopy;
-                    document.body.appendChild(tempInput);
-                    tempInput.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(tempInput);
-                    
-                    // Still show visual feedback
-                    const icon = this.el.querySelector('span[class*="hero-"]');
-                    if (icon) {
-                      const originalClasses = icon.className;
-                      icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-green-600');
-                      
-                      setTimeout(() => {
-                        icon.className = originalClasses;
-                      }, 1500);
-                    }
-                  });
-                }
-              });
-            }
-          }
-        </script>
-        
-<!-- Active Users Section -->
-        <%= if map_size(@users) > 0 do %>
-          <div class="mb-6">
-            <h3 class="text-lg font-semibold text-base-content mb-3">
-              Active Users ({map_size(@users)})
-            </h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <%= for {_name, user} <- @users do %>
-                <div class="bg-base-200 rounded-lg p-3 flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span class="text-base-content font-medium">{user.name}</span>
+        <div class="mb-8">
+          <div class="bg-base-100 rounded-lg shadow-sm p-8 border border-base-300">
+            <div class="text-base-content opacity-70 text-lg">
+              Real-time poker functionality will be implemented here.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <div class="text-center">
+          <div class="badge badge-primary badge-lg">
+            {String.replace(@poker.card_type || "fibonacci", "-", " ") |> String.upcase()}
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <button 
+            type="button" 
+            class={[
+              "btn w-full",
+              if(PlanningPoker.Poker.closed?(@poker), do: "btn-success", else: "btn-warning")
+            ]}
+            phx-click="toggle_session_state"
+          >
+            <%= if PlanningPoker.Poker.closed?(@poker), do: "Reopen", else: "Close" %>
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-outline btn-error w-full"
+            phx-click="leave_session"
+          >
+            Leave
+          </button>
+        </div>
+
+        <div :if={length(@users) > 0}>
+          <h3 class="text-lg font-semibold text-base-content mb-3">
+            Active Users ({length(@users)})
+          </h3>
+          <div class="card bg-base-200 p-4">
+            <div class="space-y-2">
+              <%= if @user_name do %>
+                <% current_user = Enum.find(@users, &(&1.username == @user_name)) %>
+                <%= if current_user && PlanningPoker.Poker.PokerUser.online?(current_user) do %>
+                  <div class="flex items-center justify-between bg-primary text-primary-content px-3 py-2 rounded">
+                    <div class="flex items-center gap-2">
+                      <div class={[
+                        "w-2 h-2 rounded-full",
+                        if(current_user.muted, do: "bg-error", else: "bg-success")
+                      ]}></div>
+                      <span class="font-medium">
+                        {current_user.username} (You)
+                      </span>
+                    </div>
+                    <button 
+                      type="button" 
+                      class="btn btn-xs btn-ghost text-primary-content hover:bg-primary-focus"
+                      phx-click="toggle_mute"
+                      title={if current_user.muted, do: "Unmute", else: "Mute"}
+                    >
+                      <.icon :if={!current_user.muted} name="hero-speaker-x-mark" class="w-4 h-4" />
+                      <.icon :if={current_user.muted} name="hero-speaker-wave" class="w-4 h-4" />
+                    </button>
+                  </div>
+                <% end %>
+              <% end %>
+              
+              <%= for user <- @users, user.username != @user_name && PlanningPoker.Poker.PokerUser.online?(user) do %>
+                <div class="flex items-center gap-2 px-3 py-2">
+                  <div class={[
+                    "w-2 h-2 rounded-full",
+                    if(user.muted, do: "bg-error", else: "bg-success")
+                  ]}></div>
+                  <span class="font-medium text-base-content">
+                    {user.username}
+                  </span>
+                </div>
+              <% end %>
+              
+              <%= for user <- @users, !PlanningPoker.Poker.PokerUser.online?(user) do %>
+                <div class="flex items-center gap-2 px-3 py-2 opacity-60">
+                  <div class="w-2 h-2 rounded-full bg-base-content opacity-40"></div>
+                  <span class="font-medium text-base-content line-through">
+                    {user.username}
+                    <span class="sr-only">(offline)</span>
+                  </span>
                 </div>
               <% end %>
             </div>
           </div>
-        <% end %>
-        
-<!-- Poker Data from PokerServer -->
-        <%= if @poker_state do %>
-          <div class="mb-6">
-            <h3 class="text-lg font-semibold text-base-content mb-3">Poker State</h3>
-            <div class="bg-base-200 rounded-lg p-4">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span class="text-base-content opacity-60">Server Started:</span>
-                  <span class="text-base-content">
-                    {Calendar.strftime(@poker_state.created_at, "%H:%M:%S")}
-                  </span>
-                </div>
-                <div>
-                  <span class="text-base-content opacity-60">Votings Available:</span>
-                  <span class="text-base-content">
-                    {length(@poker_state.poker.votings)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        <% end %>
-        
-<!-- TODO: Add main poker functionality here -->
-        <p class="text-base-content opacity-70">
-          Real-time poker functionality will be implemented here.
-        </p>
+        </div>
       </div>
-    <% else %>
-      <!-- User needs to identify themselves -->
+
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".CopyToClipboard">
+        export default {
+          mounted() {
+            this.el.addEventListener("click", () => {
+              const textToCopy = this.el.dataset.copyText;
+              
+              if (textToCopy) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                  const icon = this.el.querySelector('span[class*="hero-"]');
+                  if (icon) {
+                    const originalClasses = icon.className;
+                    icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-green-600');
+                    setTimeout(() => {
+                      icon.className = originalClasses;
+                    }, 1500);
+                  }
+                }).catch(() => {
+                  const tempInput = document.createElement('input');
+                  tempInput.value = textToCopy;
+                  document.body.appendChild(tempInput);
+                  tempInput.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(tempInput);
+                  
+                  const icon = this.el.querySelector('span[class*="hero-"]');
+                  if (icon) {
+                    const originalClasses = icon.className;
+                    icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-green-600');
+                    setTimeout(() => {
+                      icon.className = originalClasses;
+                    }, 1500);
+                  }
+                });
+              }
+            });
+          }
+        }
+      </script>
+    </div>
+
+    <%!-- Join Mode - User Not Identified --%>
+    <div :if={@mode == :join && !@user_identified} class="max-w-2xl mx-auto">
+      <div class="mb-8">
+        <h1 class="text-4xl font-bold text-base-content mb-4">{@poker.name}</h1>
+      </div>
+
       <div class="bg-base-100 rounded-lg shadow-md p-6 border border-base-300">
         <h2 class="text-xl font-semibold text-base-content mb-4">Join Planning Session</h2>
         <p class="text-base-content opacity-70 mb-6">
           Please enter your name to join this planning poker session.
         </p>
 
-        <.form for={@form} id="user-identification-form" phx-submit="identify_user">
+        <.form for={@form} id="user-identification-form" phx-submit="identify_user" phx-change="validate">
           <div class="space-y-4">
             <div>
               <.input
@@ -183,6 +281,6 @@
           </div>
         </.form>
       </div>
-    <% end %>
+    </div>
   </div>
 </Layouts.app>

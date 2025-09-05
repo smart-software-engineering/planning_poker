@@ -11,28 +11,18 @@
         A very simple daily poker to demonstrate the features of Phoenix LiveView.
       </p>
       <div class="py-8">
-        <.button navigate={~p"/new"} class="btn btn-primary btn-lg">
+        <.link navigate={~p"/poker"} class="btn btn-primary btn-lg">
           Create a planning poker
-        </.button>
+        </.link>
       </div>
 
       <div class="divider">OR</div>
 
       <div class="py-4">
-        <.form for={%{}} action={~p"/join"} method="post">
-          <div class="flex gap-2 items-center">
-            <p class="text-sm font-semibold flex-none">Join a poker:</p>
-            <input
-              type="text"
-              name="uuid"
-              placeholder="0000-0000-0000-0000-0000-0000-0000-0000"
-              class="input input-bordered flex-1"
-              pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-              required
-            />
-            <button type="submit" class="btn btn-primary flex-none">Join</button>
-          </div>
-        </.form>
+        <p class="text-sm font-semibold mb-2">Join existing poker with URL:</p>
+        <p class="text-xs text-base-content opacity-70">
+          Enter the poker URL directly in your browser or ask the moderator to share the link.
+        </p>
       </div>
 
       <div class="relative mt-10 min-h-[120px]">

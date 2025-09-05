@@ -8,7 +8,7 @@ defmodule PlanningPoker.PokerTest do
 
     import PlanningPoker.PokerFixtures
 
-    @invalid_attrs %{name: nil, description: nil}
+    @invalid_attrs %{name: nil}
 
     test "get_poker/1 returns the poker with given id" do
       poker = poker_fixture()
@@ -25,12 +25,12 @@ defmodule PlanningPoker.PokerTest do
     test "create_poker/1 with valid data creates a poker" do
       valid_attrs = %{
         name: "some name",
-        description: "some description"
+        card_type: "fibonacci"
       }
 
       assert {:ok, %SinglePoker{} = poker} = Poker.create_poker(valid_attrs)
       assert poker.name == "some name"
-      assert poker.description == "some description"
+      assert poker.card_type == "fibonacci"
     end
 
     test "create_poker/1 with invalid data returns error changeset" do
@@ -42,12 +42,12 @@ defmodule PlanningPoker.PokerTest do
 
       update_attrs = %{
         name: "some updated name",
-        description: "some updated description"
+        card_type: "t-shirt"
       }
 
       assert {:ok, %SinglePoker{} = poker} = Poker.update_poker(poker, update_attrs)
       assert poker.name == "some updated name"
-      assert poker.description == "some updated description"
+      assert poker.card_type == "t-shirt"
     end
 
     test "update_poker/2 with invalid data returns error changeset" do
@@ -69,6 +69,39 @@ defmodule PlanningPoker.PokerTest do
     test "change_poker/1 returns a poker changeset" do
       poker = poker_fixture()
       assert %Ecto.Changeset{} = Poker.change_poker(poker)
+    end
+
+    test "close_poker/1 sets the closed_at timestamp" do
+      poker = poker_fixture()
+      assert poker.closed_at == nil
+      
+      assert {:ok, %SinglePoker{} = closed_poker} = Poker.close_poker(poker)
+      assert closed_poker.closed_at != nil
+      assert Poker.closed?(closed_poker) == true
+    end
+
+    test "reopen_poker/1 clears the closed_at timestamp" do
+      poker = poker_fixture()
+      
+      # First close the poker
+      {:ok, closed_poker} = Poker.close_poker(poker)
+      assert Poker.closed?(closed_poker) == true
+      
+      # Then reopen it
+      assert {:ok, %SinglePoker{} = reopened_poker} = Poker.reopen_poker(closed_poker)
+      assert reopened_poker.closed_at == nil
+      assert Poker.closed?(reopened_poker) == false
+    end
+
+    test "closed?/1 returns correct status" do
+      poker = poker_fixture()
+      assert Poker.closed?(poker) == false
+      
+      {:ok, closed_poker} = Poker.close_poker(poker)
+      assert Poker.closed?(closed_poker) == true
+      
+      {:ok, reopened_poker} = Poker.reopen_poker(closed_poker)
+      assert Poker.closed?(reopened_poker) == false
     end
   end
 end

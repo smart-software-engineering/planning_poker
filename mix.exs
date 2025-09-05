@@ -67,8 +67,7 @@ defmodule PlanningPoker.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:tidewave, "~> 0.4", only: :dev},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:earmark, "~> 1.4"}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 

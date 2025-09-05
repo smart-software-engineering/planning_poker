@@ -11,8 +11,8 @@ defmodule PlanningPoker.PokerFixtures do
     {:ok, poker} =
       attrs
       |> Enum.into(%{
-        description: "some description",
-        name: "some name"
+        name: "some name",
+        card_type: "fibonacci"
       })
       |> PlanningPoker.Poker.create_poker()
 
