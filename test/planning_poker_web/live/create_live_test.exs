@@ -38,7 +38,6 @@ defmodule PlanningPokerWeb.CreateLiveTest do
       game_params = %{
         "name" => "Test Poker",
         "description" => "## Test Description",
-        "moderator_email" => "test@example.com",
         "card_type" => "fibonacci"
       }
 

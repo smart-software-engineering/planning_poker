@@ -16,18 +16,81 @@
           <h2 class="text-xl font-semibold text-base-content">Welcome, {@user_name}!</h2>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
-          <div>
-            <span class="text-base-content opacity-60">Poker ID:</span>
-            <span class="text-base-content font-mono">{@poker.id}</span>
-          </div>
-          <div>
-            <span class="text-base-content opacity-60">Card Type:</span>
-            <span class="text-base-content capitalize">
-              {String.replace(@poker.card_type || "fibonacci", "-", " ")}
-            </span>
-          </div>
+        <div class="flex items-baseline gap-4 text-sm mb-6">
+          <span class="text-base-content opacity-60">Poker ID:</span>
+          <span class="flex items-center gap-2 flex-grow">
+            <a
+              href={~p"/poker/#{@poker.id}"}
+              class="text-base-content font-mono hover:underline"
+              target="_blank"
+            >
+              {@poker.id}
+            </a>
+            <button
+              id="copy-poker-url"
+              type="button"
+              class="p-1 hover:bg-base-200 rounded transition-colors cursor-pointer"
+              phx-hook=".CopyToClipboard"
+              data-copy-text={@poker_url}
+              title="Copy URL"
+            >
+              <.icon
+                name="hero-clipboard-document"
+                class="w-4 h-4 text-base-content opacity-60 hover:opacity-100"
+              />
+            </button>
+          </span>
+          <span class="text-base-content capitalize">
+            {String.replace(@poker.card_type || "fibonacci", "-", " ")}
+          </span>
         </div>
+
+        <script :type={Phoenix.LiveView.ColocatedHook} name=".CopyToClipboard">
+          export default {
+            mounted() {
+              this.el.addEventListener("click", () => {
+                const textToCopy = this.el.dataset.copyText;
+                
+                if (textToCopy) {
+                  navigator.clipboard.writeText(textToCopy).then(() => {
+                    // Visual feedback - briefly change icon to checkmark
+                    const icon = this.el.querySelector('span[class*="hero-"]');
+                    if (icon) {
+                      const originalClasses = icon.className;
+                      
+                      // Change to checkmark icon temporarily
+                      icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-green-600');
+                      
+                      setTimeout(() => {
+                        // Restore clipboard icon
+                        icon.className = originalClasses;
+                      }, 1500);
+                    }
+                  }).catch(() => {
+                    // Fallback for older browsers
+                    const tempInput = document.createElement('input');
+                    tempInput.value = textToCopy;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    
+                    // Still show visual feedback
+                    const icon = this.el.querySelector('span[class*="hero-"]');
+                    if (icon) {
+                      const originalClasses = icon.className;
+                      icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-green-600');
+                      
+                      setTimeout(() => {
+                        icon.className = originalClasses;
+                      }, 1500);
+                    }
+                  });
+                }
+              });
+            }
+          }
+        </script>
         
 <!-- Active Users Section -->
         <%= if map_size(@users) > 0 do %>

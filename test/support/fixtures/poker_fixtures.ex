@@ -12,7 +12,6 @@ defmodule PlanningPoker.PokerFixtures do
       attrs
       |> Enum.into(%{
         description: "some description",
-        moderator_email: "sample@example.xyz",
         name: "some name"
       })
       |> PlanningPoker.Poker.create_poker()

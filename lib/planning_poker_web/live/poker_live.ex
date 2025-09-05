@@ -26,6 +26,7 @@ defmodule PlanningPokerWeb.PokerLive do
              |> assign(:page_title, poker.name)
              |> assign(:poker_id, id)
              |> assign(:poker, poker)
+             |> assign(:poker_url, url(~p"/poker/#{id}"))
              |> assign(:user_identified, false)
              |> assign(:user_name, nil)
              |> assign(:users, %{})
