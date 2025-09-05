@@ -140,7 +140,7 @@ defmodule PlanningPoker.Poker do
 
   @doc """
   Adds a user to a poker session.
-  
+
   Rejects if the username already exists in this poker session.
 
   ## Examples
@@ -161,10 +161,12 @@ defmodule PlanningPoker.Poker do
     })
     |> Repo.insert()
     |> case do
-      {:ok, user} -> 
+      {:ok, user} ->
         broadcast_user_update(poker.id, {:user_joined, username})
         {:ok, user}
-      {:error, changeset} -> {:error, changeset}
+
+      {:error, changeset} ->
+        {:error, changeset}
     end
   end
 
@@ -187,10 +189,12 @@ defmodule PlanningPoker.Poker do
         |> PokerUser.changeset(%{left_at: DateTime.utc_now()})
         |> Repo.update()
         |> case do
-          {:ok, updated_user} -> 
+          {:ok, updated_user} ->
             broadcast_user_update(poker_id, {:user_left, username})
             {:ok, updated_user}
-          error -> error
+
+          error ->
+            error
         end
     end
   end
@@ -214,10 +218,12 @@ defmodule PlanningPoker.Poker do
         |> PokerUser.changeset(%{muted: !user.muted})
         |> Repo.update()
         |> case do
-          {:ok, updated_user} -> 
+          {:ok, updated_user} ->
             broadcast_user_update(poker_id, {:user_mute_changed, username, updated_user.muted})
             {:ok, updated_user}
-          error -> error
+
+          error ->
+            error
         end
     end
   end
@@ -246,9 +252,10 @@ defmodule PlanningPoker.Poker do
 
   """
   def get_online_poker_users(poker_id) do
-    from(u in PokerUser, 
-      where: u.poker_id == ^poker_id and is_nil(u.left_at), 
-      order_by: [asc: u.joined_at])
+    from(u in PokerUser,
+      where: u.poker_id == ^poker_id and is_nil(u.left_at),
+      order_by: [asc: u.joined_at]
+    )
     |> Repo.all()
   end
 

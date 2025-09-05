@@ -128,7 +128,8 @@ defmodule PlanningPokerWeb.PokerLiveTest do
 
       html = render(view)
       assert html =~ "Real-time poker functionality"
-      assert html =~ "FIBONACCI"  # Card type badge
+      # Card type badge
+      assert html =~ "FIBONACCI"
       assert html =~ "Close"
       assert html =~ "Leave"
       assert html =~ "Active Users (1)"
@@ -145,17 +146,13 @@ defmodule PlanningPokerWeb.PokerLiveTest do
       refute has_element?(view, "button[title='Unmute']")
 
       view |> element("button[phx-click='toggle_mute']") |> render_click()
-      
-      # FIXME: Remove Process.sleep - technical debt for async PubSub message processing
-      Process.sleep(50)
+
       assert has_element?(view, "button[title='Unmute']")
       refute has_element?(view, "button[title='Mute']")
       assert render(view) =~ "You are now muted"
 
       view |> element("button[phx-click='toggle_mute']") |> render_click()
-      
-      # FIXME: Remove Process.sleep - technical debt for async PubSub message processing
-      Process.sleep(50)
+
       html = render(view)
       assert has_element?(view, "button[title='Mute']")
       refute has_element?(view, "button[title='Unmute']")
@@ -204,9 +201,6 @@ defmodule PlanningPokerWeb.PokerLiveTest do
       refute html =~ "bg-red-400"
 
       view |> element("button[phx-click='toggle_mute']") |> render_click()
-      
-      # FIXME: Remove Process.sleep - technical debt for async PubSub message processing
-      Process.sleep(50)
 
       html = render(view)
       assert html =~ "bg-red-400"
@@ -217,7 +211,8 @@ defmodule PlanningPokerWeb.PokerLiveTest do
       join_session(view)
 
       html = render(view)
-      assert html =~ "FIBONACCI"  # Badge text in sidebar
+      # Badge text in sidebar
+      assert html =~ "FIBONACCI"
     end
 
     test "current user appears first with highlighted background", %{conn: conn, poker: poker} do
@@ -226,7 +221,7 @@ defmodule PlanningPokerWeb.PokerLiveTest do
 
       html = render(view)
       # Should have primary background for current user
-      assert html =~ "bg-primary text-primary-content"  
+      assert html =~ "bg-primary text-primary-content"
       assert html =~ "Test User (You)"
     end
 
@@ -236,7 +231,8 @@ defmodule PlanningPokerWeb.PokerLiveTest do
 
       # Check that share section exists with copy functionality
       assert has_element?(view, "#copy-poker-url")
-      assert has_element?(view, "input[readonly]")  # URL input field
+      # Hidden URL input field
+      assert has_element?(view, "input[type='hidden']#poker-url-input")
       assert has_element?(view, "button[title='Copy URL']")
     end
   end

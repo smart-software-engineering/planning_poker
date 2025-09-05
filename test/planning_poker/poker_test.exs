@@ -74,7 +74,7 @@ defmodule PlanningPoker.PokerTest do
     test "close_poker/1 sets the closed_at timestamp" do
       poker = poker_fixture()
       assert poker.closed_at == nil
-      
+
       assert {:ok, %SinglePoker{} = closed_poker} = Poker.close_poker(poker)
       assert closed_poker.closed_at != nil
       assert Poker.closed?(closed_poker) == true
@@ -82,11 +82,11 @@ defmodule PlanningPoker.PokerTest do
 
     test "reopen_poker/1 clears the closed_at timestamp" do
       poker = poker_fixture()
-      
+
       # First close the poker
       {:ok, closed_poker} = Poker.close_poker(poker)
       assert Poker.closed?(closed_poker) == true
-      
+
       # Then reopen it
       assert {:ok, %SinglePoker{} = reopened_poker} = Poker.reopen_poker(closed_poker)
       assert reopened_poker.closed_at == nil
@@ -96,10 +96,10 @@ defmodule PlanningPoker.PokerTest do
     test "closed?/1 returns correct status" do
       poker = poker_fixture()
       assert Poker.closed?(poker) == false
-      
+
       {:ok, closed_poker} = Poker.close_poker(poker)
       assert Poker.closed?(closed_poker) == true
-      
+
       {:ok, reopened_poker} = Poker.reopen_poker(closed_poker)
       assert Poker.closed?(reopened_poker) == false
     end
