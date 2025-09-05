@@ -20,6 +20,7 @@ defmodule PlanningPokerWeb.Router do
     get "/", PageController, :home
     post "/join", PageController, :join
     live "/new", CreateLive
+    live "/privacy", PrivacyLive
     live "/poker/:id", PokerLive
   end
 

@@ -157,6 +157,24 @@
               />
             </div>
 
+            <div>
+              <label class="flex items-start gap-3 cursor-pointer">
+                <.input
+                  field={@form[:privacy_agreement]}
+                  type="checkbox"
+                  class="checkbox checkbox-primary mt-1"
+                  required
+                />
+                <span class="text-base-content text-sm leading-relaxed">
+                  I agree to the
+                  <.link navigate={~p"/privacy"} target="_blank" class="link link-primary">
+                    data privacy policy
+                  </.link>
+                  and understand that my name and votes will be stored in the database during the session and deleted after 30 days of inactivity.
+                </span>
+              </label>
+            </div>
+
             <div class="flex justify-end pt-4">
               <button type="submit" class="btn btn-primary">
                 Join Session
