@@ -7,6 +7,7 @@ defmodule PlanningPoker.Poker do
 
   alias PlanningPoker.Poker.Poker
   alias PlanningPoker.Poker.PokerUser
+  alias PlanningPoker.Poker.Voting
 
   @doc """
   Gets a single poker with all associations loaded.
@@ -269,6 +270,147 @@ defmodule PlanningPoker.Poker do
 
   # Private helper for broadcasting user updates
   defp broadcast_user_update(poker_id, message) do
+    Phoenix.PubSub.broadcast(
+      PlanningPoker.PubSub,
+      "poker:#{poker_id}",
+      message
+    )
+  end
+
+  ## Voting Management
+
+  @doc """
+  Creates a voting for a poker session.
+
+  ## Examples
+
+      iex> create_voting(poker, %{title: "Story estimation"})
+      {:ok, %Voting{}}
+
+      iex> create_voting(poker, %{title: ""})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_voting(%Poker{} = poker, attrs) do
+    next_position = get_next_voting_position(poker.id)
+
+    %Voting{}
+    |> Voting.changeset(Map.merge(attrs, %{poker_id: poker.id, position: next_position}))
+    |> Repo.insert()
+    |> case do
+      {:ok, voting} ->
+        broadcast_voting_update(poker.id, {:voting_created, voting})
+        {:ok, voting}
+      error -> error
+    end
+  end
+
+  @doc """
+  Updates a voting.
+
+  ## Examples
+
+      iex> update_voting(voting, %{title: "New title"})
+      {:ok, %Voting{}}
+
+  """
+  def update_voting(%Voting{} = voting, attrs) do
+    voting
+    |> Voting.changeset(attrs)
+    |> Repo.update()
+    |> case do
+      {:ok, updated_voting} ->
+        broadcast_voting_update(voting.poker_id, {:voting_updated, updated_voting})
+        {:ok, updated_voting}
+      error -> error
+    end
+  end
+
+  @doc """
+  Deletes a voting.
+
+  ## Examples
+
+      iex> delete_voting(voting)
+      {:ok, %Voting{}}
+
+  """
+  def delete_voting(%Voting{} = voting) do
+    case Repo.delete(voting) do
+      {:ok, deleted_voting} ->
+        broadcast_voting_update(voting.poker_id, {:voting_deleted, deleted_voting})
+        {:ok, deleted_voting}
+      error -> error
+    end
+  end
+
+  @doc """
+  Sets a decision for a voting and marks it as closed.
+
+  ## Examples
+
+      iex> set_voting_decision(voting, "5 story points")
+      {:ok, %Voting{}}
+
+  """
+  def set_voting_decision(%Voting{} = voting, decision) do
+    update_voting(voting, %{decision: decision})
+  end
+
+  @doc """
+  Removes the decision from a voting, reopening it.
+
+  ## Examples
+
+      iex> remove_voting_decision(voting)
+      {:ok, %Voting{}}
+
+  """
+  def remove_voting_decision(%Voting{} = voting) do
+    update_voting(voting, %{decision: nil})
+  end
+
+  @doc """
+  Gets votings for a poker session ordered by position.
+
+  ## Examples
+
+      iex> get_poker_votings(poker.id)
+      [%Voting{}, ...]
+
+  """
+  def get_poker_votings(poker_id) do
+    from(v in Voting, where: v.poker_id == ^poker_id, order_by: [asc: v.position])
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets a single voting by id.
+
+  ## Examples
+
+      iex> get_voting(voting_id)
+      %Voting{}
+
+      iex> get_voting("unknown")
+      nil
+
+  """
+  def get_voting(id), do: Repo.get(Voting, id)
+
+  defp get_next_voting_position(poker_id) do
+    from(v in Voting,
+      where: v.poker_id == ^poker_id,
+      select: max(v.position)
+    )
+    |> Repo.one()
+    |> case do
+      nil -> 1
+      max_position -> max_position + 1
+    end
+  end
+
+  defp broadcast_voting_update(poker_id, message) do
     Phoenix.PubSub.broadcast(
       PlanningPoker.PubSub,
       "poker:#{poker_id}",

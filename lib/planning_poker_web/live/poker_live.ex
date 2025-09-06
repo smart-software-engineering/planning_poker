@@ -2,7 +2,7 @@ defmodule PlanningPokerWeb.PokerLive do
   use PlanningPokerWeb, :live_view
 
   alias PlanningPoker.Poker
-  alias PlanningPokerWeb.Forms.{JoinPokerForm, CreatePokerForm}
+  alias PlanningPokerWeb.Forms.{JoinPokerForm, CreatePokerForm, VotingForm}
 
   def mount(_params, _session, socket) do
     {:ok, socket}
@@ -104,6 +104,80 @@ defmodule PlanningPokerWeb.PokerLive do
     end
   end
 
+  def handle_event("add_voting", _params, socket) do
+    voting_form = to_form(VotingForm.changeset(%VotingForm{}))
+    
+    {:noreply, 
+     socket
+     |> assign(:show_voting_form, true)
+     |> assign(:voting_form, voting_form)}
+  end
+
+  def handle_event("cancel_voting", _params, socket) do
+    {:noreply, 
+     socket
+     |> assign(:show_voting_form, false)
+     |> assign(:voting_form, nil)}
+  end
+
+  def handle_event("validate_voting", %{"voting_form" => form_params}, socket) do
+    changeset =
+      %VotingForm{}
+      |> VotingForm.changeset(form_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :voting_form, to_form(changeset))}
+  end
+
+  def handle_event("save_voting", %{"voting_form" => form_params}, socket) do
+    %{poker: poker} = socket.assigns
+    changeset = VotingForm.changeset(%VotingForm{}, form_params)
+
+    case changeset.valid? do
+      true ->
+        data = Ecto.Changeset.apply_changes(changeset)
+        attrs = %{title: data.title, link: data.link}
+        
+        case Poker.create_voting(poker, attrs) do
+          {:ok, _voting} ->
+            {:noreply,
+             socket
+             |> assign(:show_voting_form, false)
+             |> assign(:voting_form, nil)}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Failed to save voting")}
+        end
+
+      false ->
+        {:noreply, assign(socket, :voting_form, to_form(changeset))}
+    end
+  end
+
+  def handle_event("set_decision", %{"voting_id" => voting_id, "decision" => decision}, socket) do
+    voting = Poker.get_voting(voting_id)
+    
+    case Poker.set_voting_decision(voting, String.trim(decision)) do
+      {:ok, _voting} ->
+        {:noreply, socket}
+      
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Failed to set decision")}
+    end
+  end
+
+  def handle_event("remove_decision", %{"voting_id" => voting_id}, socket) do
+    voting = Poker.get_voting(voting_id)
+    
+    case Poker.remove_voting_decision(voting) do
+      {:ok, _voting} ->
+        {:noreply, socket}
+      
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Failed to remove decision")}
+    end
+  end
+
   def terminate(_reason, socket) do
     if socket.assigns[:user_identified] && socket.assigns[:user_name] do
       Poker.leave_poker_user(socket.assigns.poker_id, socket.assigns.user_name)
@@ -115,7 +189,6 @@ defmodule PlanningPokerWeb.PokerLive do
   def handle_info({:user_joined, user_name}, socket) do
     users = Poker.get_poker_users(socket.assigns.poker_id)
 
-    # Don't show flash for current user - they already got welcome message
     if user_name == socket.assigns[:user_name] do
       {:noreply, assign(socket, :users, users)}
     else
@@ -152,6 +225,21 @@ defmodule PlanningPokerWeb.PokerLive do
      |> put_flash(:info, flash_message)}
   end
 
+  def handle_info({:voting_created, _voting}, socket) do
+    updated_poker = Poker.get_poker(socket.assigns.poker.id)
+    {:noreply, assign(socket, :poker, updated_poker)}
+  end
+
+  def handle_info({:voting_updated, _voting}, socket) do
+    updated_poker = Poker.get_poker(socket.assigns.poker.id)
+    {:noreply, assign(socket, :poker, updated_poker)}
+  end
+
+  def handle_info({:voting_deleted, _voting}, socket) do
+    updated_poker = Poker.get_poker(socket.assigns.poker.id)
+    {:noreply, assign(socket, :poker, updated_poker)}
+  end
+
   # Private helper functions
   defp handle_join_poker(id, socket) do
     case Poker.get_poker(id) do
@@ -174,7 +262,9 @@ defmodule PlanningPokerWeb.PokerLive do
          |> assign(:user_name, user_name)
          |> assign(:users, poker.poker_users)
          |> assign(:mode, :join)
-         |> assign(:form, to_form(JoinPokerForm.changeset(%JoinPokerForm{})))}
+         |> assign(:form, to_form(JoinPokerForm.changeset(%JoinPokerForm{})))
+         |> assign(:show_voting_form, false)
+         |> assign(:voting_form, nil)}
     end
   end
 
