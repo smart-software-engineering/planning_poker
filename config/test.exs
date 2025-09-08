@@ -39,6 +39,9 @@ config :phoenix_live_view,
 # Use mock implementation for user tracking in tests
 config :planning_poker, :user_tracking_impl, PlanningPoker.UserTrackingMock
 
+# Allow bypassing token validation in tests
+config :planning_poker, :bypass_token_validation, true
+
 # Disable Sentry in test
 config :sentry,
   dsn: nil,

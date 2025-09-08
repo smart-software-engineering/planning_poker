@@ -185,7 +185,9 @@ defmodule PlanningPokerWeb.PokerLiveTest do
       assert html =~ "5"
       assert html =~ "8"
       assert html =~ "13"
-      assert html =~ "21"
+      assert html =~ "20"
+      assert html =~ "40"
+      assert html =~ "100"
     end
 
     test "shows t-shirt cards for t-shirt poker", %{conn: conn} do

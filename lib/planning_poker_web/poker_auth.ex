@@ -49,8 +49,7 @@ defmodule PlanningPokerWeb.PokerAuth do
 
   defp validate_user_membership(poker, username, poker_id, socket) do
     if username in (poker.usernames || []) do
-      {:cont,
-       socket |> assign(:current_user, username) |> assign(:poker_id, poker_id)}
+      {:cont, socket |> assign(:current_user, username) |> assign(:poker_id, poker_id)}
     else
       redirect_to_join(
         socket,

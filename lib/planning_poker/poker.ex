@@ -12,7 +12,7 @@ defmodule PlanningPoker.Poker do
 
   @card_types ["fibonacci", "t-shirt"]
   @card_options %{
-    "fibonacci" => ["?", "1", "2", "3", "5", "8", "13", "21"],
+    "fibonacci" => ["?", "1", "2", "3", "5", "8", "13", "20", "40", "100"],
     "t-shirt" => ["?", "XS", "S", "M", "L", "XL", "XXL"]
   }
 
@@ -542,7 +542,10 @@ defmodule PlanningPoker.Poker do
   Validates a user session token.
   """
   def validate_user_token(poker_id, username, token) do
-    if Mix.env() == :test and String.length(token) == 24 do
+    # Check if token validation should be bypassed (useful for testing)
+    bypass_validation? = Application.get_env(:planning_poker, :bypass_token_validation, false)
+
+    if bypass_validation? and String.length(token) == 24 do
       # Accept test tokens (24 chars base64 from 16 bytes)
       true
     else

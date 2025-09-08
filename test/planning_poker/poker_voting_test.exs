@@ -17,7 +17,7 @@ defmodule PlanningPoker.PokerVotingTest do
     end
 
     test "card_options/1 returns correct options for fibonacci" do
-      expected = ["?", "1", "2", "3", "5", "8", "13", "21"]
+      expected = ["?", "1", "2", "3", "5", "8", "13", "20", "40", "100"]
       assert Poker.card_options("fibonacci") == expected
     end
 
@@ -27,7 +27,7 @@ defmodule PlanningPoker.PokerVotingTest do
     end
 
     test "card_options/1 returns fibonacci for unknown card type" do
-      expected = ["?", "1", "2", "3", "5", "8", "13", "21"]
+      expected = ["?", "1", "2", "3", "5", "8", "13", "20", "40", "100"]
       assert Poker.card_options("unknown") == expected
     end
 
