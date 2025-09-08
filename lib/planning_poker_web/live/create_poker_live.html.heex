@@ -1,0 +1,73 @@
+<Layouts.app flash={@flash}>
+  <div class="max-w-sm sm:max-w-md md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl mx-auto">
+      <div class="mb-8">
+        <h1 class="text-4xl font-bold text-base-content mb-4">Create Planning Poker</h1>
+        <p class="text-base-content opacity-70">
+          Create a new planning poker session and join it immediately.
+        </p>
+      </div>
+
+      <div class="bg-base-100 rounded-lg shadow-md p-6 border border-base-300">
+        <.form for={@form} id="create-poker-form" phx-submit="create_poker" phx-change="validate">
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <.input
+                  field={@form[:name]}
+                  type="text"
+                  label="Session Name"
+                  placeholder="Sprint 5 Planning"
+                  required
+                />
+              </div>
+              <div>
+                <.input
+                  field={@form[:card_type]}
+                  type="select"
+                  label="Card Type"
+                  options={PlanningPoker.Poker.card_type_options()}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <.input
+                field={@form[:username]}
+                type="text"
+                label="Your Name"
+                placeholder="Enter your name"
+                required
+              />
+            </div>
+
+            <div>
+              <label class="flex items-start gap-3 cursor-pointer">
+                <.input
+                  field={@form[:privacy_agreement]}
+                  type="checkbox"
+                  class="checkbox checkbox-primary mt-1"
+                  required
+                />
+                <span class="text-base-content text-sm leading-relaxed">
+                  I agree to the
+                  <.link navigate={~p"/privacy"} target="_blank" class="link link-primary">
+                    data privacy policy
+                  </.link>
+                  and understand that my name and votes will be stored in the database during the session and deleted after 30 days of inactivity.
+                </span>
+              </label>
+            </div>
+
+            <div class="flex justify-end pt-4">
+              <button type="submit" class="btn btn-primary">
+                Create & Join Session
+              </button>
+            </div>
+          </div>
+        </.form>
+      </div>
+    </div>
+  </div>
+</Layouts.app>

@@ -55,12 +55,13 @@ defmodule PlanningPokerWeb.CoreComponents do
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+      phx-hook="AutoDismissFlash"
       role="alert"
       class="toast toast-top toast-end z-50"
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
+        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap relative overflow-hidden",
         @kind == :info && "alert-info",
         @kind == :error && "alert-error"
       ]}>
@@ -74,6 +75,14 @@ defmodule PlanningPokerWeb.CoreComponents do
         <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
           <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
         </button>
+        <!-- Progress bar at bottom -->
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-black bg-opacity-20">
+          <div
+            class="progress-bar h-full bg-current opacity-50 transition-all duration-75 ease-linear"
+            style="width: 100%"
+          >
+          </div>
+        </div>
       </div>
     </div>
     """

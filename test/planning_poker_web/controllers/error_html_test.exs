@@ -5,11 +5,16 @@ defmodule PlanningPokerWeb.ErrorHTMLTest do
   import Phoenix.Template, only: [render_to_string: 4]
 
   test "renders 404.html" do
-    assert render_to_string(PlanningPokerWeb.ErrorHTML, "404", "html", []) == "Not Found"
+    # Our custom 404 template renders HTML, not just "Not Found"
+    html = render_to_string(PlanningPokerWeb.ErrorHTML, "404", "html", flash: %{})
+    assert html =~ "Poker Session Not Found"
+    assert html =~ "404"
   end
 
   test "renders 500.html" do
-    assert render_to_string(PlanningPokerWeb.ErrorHTML, "500", "html", []) ==
-             "Internal Server Error"
+    # Our custom 500 template renders HTML, not just "Internal Server Error"
+    html = render_to_string(PlanningPokerWeb.ErrorHTML, "500", "html", flash: %{})
+    assert html =~ "Internal Server Error"
+    assert html =~ "500"
   end
 end

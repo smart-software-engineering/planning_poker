@@ -1,0 +1,56 @@
+<Layouts.app flash={@flash} current_scope={%{}}>
+  <.header>
+    {@poker.name}
+    <:subtitle>Enter your name to join the session</:subtitle>
+  </.header>
+
+  <div class="max-w-md mx-auto">
+    <.form
+      for={@form}
+      id="join-form"
+      action={~p"/poker/#{@poker.id}"}
+      method="post"
+      class="space-y-4"
+    >
+      <.input
+        field={@form[:name]}
+        type="text"
+        label="Your Name"
+        placeholder="Enter your name"
+        required
+        autofocus
+        class="w-full"
+      />
+
+      <div>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <.input
+            field={@form[:privacy_agreement]}
+            type="checkbox"
+            class="checkbox checkbox-primary mt-1"
+            required
+          />
+          <span class="text-base-content text-sm leading-relaxed">
+            I agree to the
+            <.link navigate={~p"/privacy"} target="_blank" class="link link-primary">
+              data privacy policy
+            </.link>
+            and understand that my name and votes will be stored in the database during the session and deleted after 30 days of inactivity.
+          </span>
+        </label>
+      </div>
+
+      <div class="flex justify-end pt-4">
+        <.button type="submit" class="w-full">
+          Join Session
+        </.button>
+      </div>
+    </.form>
+
+    <div class="mt-6 text-center">
+      <.link navigate={~p"/poker"} class="text-sm text-base-content/60 hover:text-base-content">
+        ← Back to home
+      </.link>
+    </div>
+  </div>
+</Layouts.app>

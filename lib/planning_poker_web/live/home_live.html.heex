@@ -1,0 +1,65 @@
+<Layouts.app flash={@flash}>
+  <div class="hero min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10">
+    <div class="hero-content text-center max-w-4xl">
+      <div class="max-w-2xl">
+        <div class="mb-8">
+          <div class="badge badge-primary badge-lg mb-4">Phoenix LiveView Demo</div>
+          <h1 class="text-5xl font-bold text-primary mb-4">
+            Planning Poker
+          </h1>
+          <p class="text-lg text-base-content/80 mb-8">
+            A collaborative estimation tool for agile teams built with Phoenix LiveView.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-6">
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h2 class="card-title text-success justify-center">
+                <.icon name="hero-plus-circle" class="w-6 h-6" /> Start a New Session
+              </h2>
+              <p class="text-base-content/70 mb-4">
+                Create a new planning poker session and invite your team.
+              </p>
+              <.link navigate={~p"/poker"} class="btn btn-success btn-lg">
+                <.icon name="hero-sparkles" class="w-5 h-5" /> Create Planning Poker
+              </.link>
+            </div>
+          </div>
+
+          <div class="divider text-base-content/50">OR</div>
+
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h2 class="card-title text-info justify-center">
+                <.icon name="hero-link" class="w-6 h-6" /> Join Existing Session
+              </h2>
+              <p class="text-base-content/70 mb-4">
+                Ask your moderator to share the session URL with you.
+              </p>
+
+              <div class="alert alert-info">
+                <.icon name="hero-information-circle" class="w-5 h-5" />
+                <span class="text-sm">
+                  The moderator can share the session URL directly from their poker session.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-12">
+          <a
+            href="https://github.com/titaniumcoder/planning_poker"
+            class="btn btn-ghost gap-2 hover:scale-105 transition-transform"
+          >
+            <svg viewBox="0 0 24 24" class="w-5 h-5 fill-current">
+              <path d="M12 0C5.37 0 0 5.506 0 12.303c0 5.445 3.435 10.043 8.205 11.674.6.107.825-.262.825-.585 0-.292-.015-1.261-.015-2.291C6 21.67 5.22 20.346 4.98 19.654c-.135-.354-.72-1.446-1.23-1.738-.42-.23-1.02-.8-.015-.815.945-.015 1.62.892 1.845 1.261 1.08 1.86 2.805 1.338 3.495 1.015.105-.8.42-1.338.765-1.645-2.67-.308-5.46-1.37-5.46-6.075 0-1.338.465-2.446 1.23-3.307-.12-.308-.54-1.569.12-3.26 0 0 1.005-.323 3.3 1.26.96-.276 1.98-.415 3-.415s2.04.139 3 .416c2.295-1.6 3.3-1.261 3.3-1.261.66 1.691.24 2.952.12 3.26.765.861 1.23 1.953 1.23 3.307 0 4.721-2.805 5.767-5.475 6.075.435.384.81 1.122.81 2.276 0 1.645-.015 2.968-.015 3.383 0 .323.225.707.825.585a12.047 12.047 0 0 0 5.919-4.489A12.536 12.536 0 0 0 24 12.304C24 5.505 18.63 0 12 0Z" />
+            </svg>
+            View Source Code
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layouts.app>

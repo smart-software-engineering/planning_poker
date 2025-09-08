@@ -1,237 +1,210 @@
 defmodule PlanningPokerWeb.PokerLiveTest do
-  use PlanningPokerWeb.ConnCase, async: true
+  use PlanningPokerWeb.ConnCase
 
   import Phoenix.LiveViewTest
   import PlanningPoker.PokerFixtures
 
-  describe "PokerLive" do
+  alias PlanningPoker.Poker
+
+  @user_tracking_impl Application.compile_env(
+                        :planning_poker,
+                        :user_tracking_impl,
+                        PlanningPoker.UserTrackingContext
+                      )
+
+  describe "voting functionality" do
     setup do
-      poker = poker_fixture()
-      %{poker: poker}
+      poker = poker_fixture(%{name: "Test Poker", card_type: "fibonacci"})
+      voting = voting_fixture(poker, %{title: "Test Story"})
+
+      # Start user tracking to ensure proper state management
+      @user_tracking_impl.start_user_tracking(poker.id)
+
+      %{poker: poker, voting: voting}
     end
 
-    test "renders poker page with join form", %{conn: conn, poker: poker} do
-      {:ok, view, html} = live(conn, ~p"/poker/#{poker.id}")
+    defp join_and_get_live_session(conn, poker, username) do
+      # Join via controller to establish session
+      conn =
+        post(conn, ~p"/poker/#{poker.id}",
+          join_poker_form: %{
+            "name" => username,
+            "privacy_agreement" => "true"
+          }
+        )
 
-      assert html =~ poker.name
-      assert html =~ "Join Planning Session"
-      assert has_element?(view, "#user-identification-form")
-      assert has_element?(view, "input[type='text'][placeholder='Enter your name']")
-      assert has_element?(view, "input[type='checkbox']")
-      assert html =~ "data privacy policy"
+      assert redirected_to(conn) == "/poker/#{poker.id}/live"
+
+      # Access live view with session
+      {:ok, view, html} = live(conn, ~p"/poker/#{poker.id}/live")
+      {view, html}
     end
 
-    test "requires privacy agreement to join", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
+    test "shows start voting button for open voting", %{conn: conn, poker: poker} do
+      {view, _html} = join_and_get_live_session(conn, poker, "alice")
 
-      # Try to submit with name but without privacy agreement
-      view
-      |> form("#user-identification-form",
-        join_poker_form: %{"name" => "Test User", "privacy_agreement" => "false"}
-      )
-      |> render_submit()
+      # Check that start voting button exists
+      assert has_element?(view, "button", "Start Voting")
+    end
 
-      # Should still be on the join form (not joined)
+    test "starts voting session when button clicked", %{conn: conn, poker: poker} do
+      {view, _html} = join_and_get_live_session(conn, poker, "alice")
+
+      # Click start voting
+      view |> element("button", "Start Voting") |> render_click()
+
+      # Should now show voting interface with cards
       html = render(view)
-      assert html =~ "Join Planning Session"
-      refute html =~ "Welcome, Test User!"
+      assert html =~ "Cast Your Vote"
+      # Check for fibonacci cards
+      assert html =~ "1"
+      assert html =~ "2"
+      assert html =~ "3"
+      assert html =~ "5"
+      assert html =~ "8"
     end
 
-    test "allows joining with name and privacy agreement", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
+    test "shows voting progress for participants", %{conn: conn, poker: poker} do
+      # Add a second user to the poker session so voting doesn't auto-complete
+      {:ok, _token} = Poker.join_poker_user(poker, "bob")
 
-      # Submit with both name and privacy agreement
-      view
-      |> form("#user-identification-form",
-        join_poker_form: %{
-          "name" => "Test User",
-          "privacy_agreement" => "true"
-        }
-      )
-      |> render_submit()
+      # Connect alice first (which will mark alice as online)
+      {view, _html} = join_and_get_live_session(conn, poker, "alice")
 
-      # Should join successfully and show welcome message
+      # Then mark bob as online
+      @user_tracking_impl.mark_user_online(poker.id, "bob", self())
+
+      # Verify both users are considered unmuted and online
+      unmuted_users = Poker.get_unmuted_online_users(poker.id)
+      assert "alice" in unmuted_users
+      assert "bob" in unmuted_users
+
+      # Start voting
+      view |> element("button", "Start Voting") |> render_click()
+
+      # Submit a vote using more specific selector
       html = render(view)
-      assert html =~ "Welcome, Test User!"
-      assert html =~ "Active Users (1)"
-      refute html =~ "Join Planning Session"
-    end
+      assert html =~ "phx-click=\"submit_vote\""
 
-    test "validates required name field", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
+      view |> element("div[phx-click='submit_vote'][phx-value-vote='5']") |> render_click()
 
-      # Try to submit with privacy agreement but no name
-      view
-      |> form("#user-identification-form",
-        join_poker_form: %{
-          "name" => "",
-          "privacy_agreement" => "true"
-        }
-      )
-      |> render_submit()
-
-      # Should still be on the join form (not joined)
+      # Should show voting progress (won't complete because bob hasn't voted yet)
       html = render(view)
-      assert html =~ "Join Planning Session"
-      refute html =~ "Welcome,"
+      assert html =~ "Voting in Progress"
+      assert html =~ "alice"
     end
 
-    test "validates both name and privacy agreement are required", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
+    test "submits vote and shows confirmation", %{conn: conn, poker: poker} do
+      # Add a second user to the poker session so voting doesn't auto-complete
+      {:ok, _token} = Poker.join_poker_user(poker, "bob")
 
-      # Try to submit with empty form
-      view
-      |> form("#user-identification-form",
-        join_poker_form: %{
-          "name" => "",
-          "privacy_agreement" => "false"
-        }
-      )
-      |> render_submit()
+      # Start user tracking to properly track online/offline users
+      @user_tracking_impl.start_user_tracking(poker.id)
+      # Mark both users as online
+      @user_tracking_impl.mark_user_online(poker.id, "alice", self())
+      @user_tracking_impl.mark_user_online(poker.id, "bob", self())
 
-      # Should still be on the join form (not joined)
+      {view, _html} = join_and_get_live_session(conn, poker, "alice")
+
+      # Start voting
+      view |> element("button", "Start Voting") |> render_click()
+
+      # Submit a vote using more specific selector
+      view |> element("div[phx-click='submit_vote'][phx-value-vote='5']") |> render_click()
+
+      # Should show the user's vote
       html = render(view)
-      assert html =~ "Join Planning Session"
-      refute html =~ "Welcome,"
+      # User's vote should be visible
+      assert html =~ "5"
     end
 
-    test "redirects to create mode when poker does not exist", %{conn: conn} do
-      # Use a valid UUID format
-      nonexistent_uuid = "00000000-0000-0000-0000-000000000000"
+    test "cancels voting session", %{conn: conn, poker: poker} do
+      {view, _html} = join_and_get_live_session(conn, poker, "alice")
 
-      # Should redirect to create mode during mount
-      result = live(conn, ~p"/poker/#{nonexistent_uuid}")
-      assert {:error, {:live_redirect, %{to: "/poker", flash: %{}}}} = result
+      # Start voting
+      view |> element("button", "Start Voting") |> render_click()
+
+      # Cancel voting
+      view |> element("button", "Cancel Voting") |> render_click()
+
+      # Should return to normal state
+      assert has_element?(view, "button", "Start Voting")
+    end
+
+    test "shows voting history after completion", %{conn: conn, poker: poker} do
+      # Create voting with some history
+      _voting =
+        voting_fixture(poker, %{
+          title: "Test Story",
+          votes: [
+            %{
+              "result" => "completed",
+              "votes" => %{"alice" => "5", "bob" => "8"},
+              "participants" => ["alice", "bob"],
+              "ended_at" => DateTime.utc_now()
+            }
+          ]
+        })
+
+      {_view, html} = join_and_get_live_session(conn, poker, "alice")
+
+      # Should show voting history
+      assert html =~ "Test Story"
+      assert html =~ "alice"
+      assert html =~ "5"
+      assert html =~ "bob"
+      assert html =~ "8"
+    end
+
+    test "disabled start voting when poker is closed", %{conn: conn, poker: poker} do
+      # Close the poker session
+      {:ok, closed_poker} = Poker.close_poker(poker)
+
+      {view, _html} = join_and_get_live_session(conn, closed_poker, "alice")
+
+      # Start voting button should be disabled
+      assert has_element?(view, "button[disabled]", "Start Voting")
     end
   end
 
-  describe "authenticated user functionality" do
-    setup do
-      poker = poker_fixture()
-      %{poker: poker}
-    end
+  describe "card types" do
+    test "shows fibonacci cards for fibonacci poker", %{conn: conn} do
+      poker = poker_fixture(%{name: "Fibonacci Poker", card_type: "fibonacci"})
+      _voting = voting_fixture(poker, %{title: "Test Story"})
 
-    defp join_session(view, name \\ "Test User") do
-      view
-      |> form("#user-identification-form",
-        join_poker_form: %{
-          "name" => name,
-          "privacy_agreement" => "true"
-        }
-      )
-      |> render_submit()
-    end
+      {view, _html} = join_and_get_live_session(conn, poker, "alice")
 
-    test "shows two-column layout after joining", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
-      join_session(view)
+      # Start voting to see cards
+      view |> element("button", "Start Voting") |> render_click()
 
       html = render(view)
-      assert html =~ "Real-time poker functionality"
-      # Card type badge
-      assert html =~ "FIBONACCI"
-      assert html =~ "Close"
-      assert html =~ "Leave"
-      assert html =~ "Active Users (1)"
-      assert html =~ "Test User (You)"
-      assert html =~ "Share"
+      # Should show fibonacci sequence
+      assert html =~ "1"
+      assert html =~ "2"
+      assert html =~ "3"
+      assert html =~ "5"
+      assert html =~ "8"
+      assert html =~ "13"
+      assert html =~ "21"
     end
 
-    test "toggle_mute changes mute status and updates UI", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
-      join_session(view)
+    test "shows t-shirt cards for t-shirt poker", %{conn: conn} do
+      poker = poker_fixture(%{name: "T-Shirt Poker", card_type: "t-shirt"})
+      _voting = voting_fixture(poker, %{title: "Test Story"})
 
-      assert has_element?(view, "button[title='Mute']")
-      refute has_element?(view, "button[title='Unmute']")
+      {view, _html} = join_and_get_live_session(conn, poker, "alice")
 
-      view |> element("button[phx-click='toggle_mute']") |> render_click()
-
-      assert has_element?(view, "button[title='Unmute']")
-      refute has_element?(view, "button[title='Mute']")
-      assert render(view) =~ "You are now muted"
-
-      view |> element("button[phx-click='toggle_mute']") |> render_click()
+      # Start voting to see cards
+      view |> element("button", "Start Voting") |> render_click()
 
       html = render(view)
-      assert has_element?(view, "button[title='Mute']")
-      refute has_element?(view, "button[title='Unmute']")
-      assert html =~ "You are now unmuted"
-    end
-
-    test "toggle_session_state changes session status", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
-      join_session(view)
-
-      assert has_element?(view, "button", "Close")
-      refute has_element?(view, "button", "Reopen")
-
-      view |> element("button[phx-click='toggle_session_state']") |> render_click()
-
-      assert has_element?(view, "button", "Reopen")
-      refute has_element?(view, "button", "Close")
-      assert render(view) =~ "Session closed successfully!"
-
-      view |> element("button[phx-click='toggle_session_state']") |> render_click()
-
-      html = render(view)
-      assert has_element?(view, "button", "Close")
-      refute has_element?(view, "button", "Reopen")
-      assert html =~ "Session reopened successfully!"
-    end
-
-    test "leave_session navigates back to home", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
-      join_session(view)
-
-      html = render(view)
-      assert html =~ "Test User (You)"
-
-      view |> element("button[phx-click='leave_session']") |> render_click()
-
-      assert_redirect(view, "/")
-    end
-
-    test "user list shows correct mute status styling", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
-      join_session(view)
-
-      html = render(view)
-      refute html =~ "bg-error"
-
-      view |> element("button[phx-click='toggle_mute']") |> render_click()
-
-      html = render(view)
-      assert html =~ "bg-error"
-    end
-
-    test "shows card type badge", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
-      join_session(view)
-
-      html = render(view)
-      # Badge text in sidebar
-      assert html =~ "FIBONACCI"
-    end
-
-    test "current user appears first with highlighted background", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
-      join_session(view)
-
-      html = render(view)
-      # Should have primary background for current user
-      assert html =~ "bg-primary text-primary-content"
-      assert html =~ "Test User (You)"
-    end
-
-    test "copy URL functionality is present", %{conn: conn, poker: poker} do
-      {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
-      join_session(view)
-
-      # Check that share section exists with copy functionality
-      assert has_element?(view, "#copy-poker-url")
-      # Hidden URL input field
-      assert has_element?(view, "input[type='hidden']#poker-url-input")
-      assert has_element?(view, "button[title='Copy URL']")
+      # Should show t-shirt sizes
+      assert html =~ "XS"
+      assert html =~ "S"
+      assert html =~ "M"
+      assert html =~ "L"
+      assert html =~ "XL"
+      assert html =~ "XXL"
     end
   end
 end

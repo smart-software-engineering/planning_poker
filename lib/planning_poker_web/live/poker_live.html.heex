@@ -1,79 +1,10 @@
-<Layouts.app flash={@flash}>
-  <div class="max-w-[1400px] mx-auto py-8 px-4">
-    <%!-- Create Mode --%>
-    <div :if={@mode == :create} class="max-w-2xl mx-auto">
-      <div class="mb-8">
-        <h1 class="text-4xl font-bold text-base-content mb-4">Create Planning Poker</h1>
-        <p class="text-base-content opacity-70">
-          Create a new planning poker session and join it immediately.
-        </p>
-      </div>
-
-      <div class="bg-base-100 rounded-lg shadow-md p-6 border border-base-300">
-        <.form for={@form} id="create-poker-form" phx-submit="create_poker" phx-change="validate">
-          <div class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <.input
-                  field={@form[:name]}
-                  type="text"
-                  label="Session Name"
-                  placeholder="Sprint 5 Planning"
-                  required
-                />
-              </div>
-              <div>
-                <.input
-                  field={@form[:card_type]}
-                  type="select"
-                  label="Card Type"
-                  options={[{"Fibonacci", "fibonacci"}, {"T-Shirt", "t-shirt"}]}
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <.input
-                field={@form[:username]}
-                type="text"
-                label="Your Name"
-                placeholder="Enter your name"
-                required
-              />
-            </div>
-
-            <div>
-              <label class="flex items-start gap-3 cursor-pointer">
-                <.input
-                  field={@form[:privacy_agreement]}
-                  type="checkbox"
-                  class="checkbox checkbox-primary mt-1"
-                  required
-                />
-                <span class="text-base-content text-sm leading-relaxed">
-                  I agree to the
-                  <.link navigate={~p"/privacy"} target="_blank" class="link link-primary">
-                    data privacy policy
-                  </.link>
-                  and understand that my name and votes will be stored in the database during the session and deleted after 30 days of inactivity.
-                </span>
-              </label>
-            </div>
-
-            <div class="flex justify-end pt-4">
-              <button type="submit" class="btn btn-primary">
-                Create & Join Session
-              </button>
-            </div>
-          </div>
-        </.form>
-      </div>
-    </div>
-
-    <%!-- Join Mode - User Identified --%>
-    <div :if={@mode == :join && @user_identified} class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-      <div class="lg:col-span-3">
+<Layouts.app flash={@flash} current_scope={%{}}>
+  <div class="max-w-sm sm:max-w-md md:max-w-6xl lg:max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <!-- Mobile L and smaller: Single column -->
+    <!-- Tablet and higher (768px+): Two columns, left content + right sidebar (260px) -->
+    <div class="flex flex-col md:flex-row gap-6 md:gap-8">
+      <!-- Main Content Area -->
+      <div class="flex-1 md:flex-1">
         <div class="mb-8 flex items-center justify-between">
           <h1 class="text-4xl font-bold text-base-content">{@poker.name}</h1>
           <div class="flex items-center gap-2">
@@ -86,7 +17,7 @@
             <button
               id="copy-poker-url"
               type="button"
-              class="btn btn-sm btn-outline"
+              class="btn btn-sm btn-ghost"
               phx-hook=".CopyToClipboard"
               data-copy-text={@poker_url}
               title="Copy URL"
@@ -96,33 +27,430 @@
           </div>
         </div>
 
-        <div class="mb-8">
-          <div class="bg-base-100 rounded-lg shadow-sm p-8 border border-base-300">
-            <div class="text-base-content opacity-70 text-lg">
-              Real-time poker functionality will be implemented here.
+        <%!-- Votings List --%>
+        <div :if={length(@poker.votings) > 0} class="space-y-4">
+          <div class="space-y-3">
+            <%= for voting <- @poker.votings do %>
+              <div class="card bg-base-200 border border-base-300 p-4">
+                <div class="card-body p-0">
+                  <div class="flex items-center gap-3 mb-4">
+                    <h3 class="text-xl font-medium">{voting.title}</h3>
+                    <div :if={voting.link} class="flex-shrink-0">
+                      <a
+                        href={voting.link}
+                        target="_blank"
+                        class="btn btn-xs btn-ghost hover:btn-accent"
+                        title="Open external link"
+                      >
+                        <.icon name="hero-arrow-top-right-on-square" class="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+
+                  <div>
+                    <%!-- Historical Voting Rounds --%>
+                    <div :if={length(voting.votes || []) > 0} class="mb-4">
+                      <div class="space-y-4">
+                        <% show_all_rounds = Map.get(@rounds_visibility || %{}, voting.id, false)
+                        voting_rounds = voting.votes
+
+                        is_voting_active =
+                          @voting_status == :voting && @current_voting_id == voting.id %>
+
+                        <%!-- Show rounds toggle button if more than 1 round and not showing all --%>
+                        <%= if length(voting_rounds) > 1 && !show_all_rounds && !is_voting_active do %>
+                          <div class="text-center mb-4">
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-ghost"
+                              phx-click="toggle_rounds_visibility"
+                              phx-value-voting_id={voting.id}
+                            >
+                              <%= if voting.decision do %>
+                                Show all {length(voting_rounds)} round{if length(voting_rounds) !=
+                                                                            1,
+                                                                          do: "s"}
+                              <% else %>
+                                Show {length(voting_rounds) - 1} previous round{if length(
+                                                                                     voting_rounds
+                                                                                   ) - 1 != 1,
+                                                                                   do: "s"}
+                              <% end %>
+                            </button>
+                          </div>
+                        <% end %>
+
+                        <%!-- Show rounds based on conditions --%>
+                        <% rounds_to_show =
+                          cond do
+                            # If voting is active, hide previous rounds (show none for now)
+                            is_voting_active ->
+                              []
+
+                            # If showing all rounds or only 1 round exists
+                            show_all_rounds || length(voting_rounds) <= 1 ->
+                              voting_rounds |> Enum.with_index()
+
+                            # If there's a decision, hide the last round by default (show none)
+                            voting.decision && !show_all_rounds ->
+                              []
+
+                            # Otherwise show only the last round
+                            true ->
+                              last_round = List.last(voting_rounds)
+                              last_index = length(voting_rounds) - 1
+                              [{last_round, last_index}]
+                          end %>
+
+                        <%= for {vote_data, index} <- rounds_to_show do %>
+                          <div class="divider divider-neutral">ROUND #{index + 1}</div>
+                          <div class="py-2">
+                            <%!-- Poker cards for voting results --%>
+                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                              <%= for {user, vote} <- Map.get(vote_data, "votes", %{}) do %>
+                                <div class="poker-card-result">
+                                  <div class="poker-card-name-small">{user}</div>
+                                  <div class="poker-card-content-small">
+                                    {vote}
+                                  </div>
+                                </div>
+                              <% end %>
+                            </div>
+                          </div>
+                        <% end %>
+
+                        <%!-- Show collapse button if currently showing all rounds --%>
+                        <%= if show_all_rounds && length(voting_rounds) > 1 do %>
+                          <div class="text-center mt-4">
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-ghost"
+                              phx-click="toggle_rounds_visibility"
+                              phx-value-voting_id={voting.id}
+                            >
+                              Show only latest round
+                            </button>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+
+                    <div :if={length(voting.votes || []) == 0} class="mb-4">
+                      <div class="text-base-content opacity-70">No voting rounds yet.</div>
+                    </div>
+                    <%!-- Voting Interface at bottom --%>
+                    <div
+                      :if={
+                        @voting_status == :voting && @current_voting_id == voting.id &&
+                          !PlanningPoker.Poker.closed?(@poker)
+                      }
+                      id="voting-interface"
+                    >
+                      <div :if={@user_name in (@voting_participants || [])} class="mb-6">
+                        <%!-- Auto-scroll hook for unmuted participants --%>
+                        <div
+                          id={"auto-scroll-#{voting.id}"}
+                          phx-hook=".AutoScrollToVoting"
+                          class="hidden"
+                        >
+                        </div>
+                        <%!-- Show voting cards or progress based on user's voting status --%>
+                        <%= if !@user_has_voted do %>
+                          <%!-- Voting Cards Section --%>
+                          <div class="text-center mb-6">
+                            <h4 class="text-lg font-semibold mb-6">Cast Your Vote</h4>
+                            <%!-- Show countdown timer above voting cards --%>
+                            <div :if={@remaining_time} class="mb-6">
+                              <div
+                                id={"voting-timer-#{voting.id}"}
+                                phx-hook=".VotingTimer"
+                                data-remaining-time={@remaining_time}
+                                class="text-center"
+                              >
+                                <div class="text-sm text-base-content opacity-70">
+                                  Time remaining:
+                                </div>
+                                <div
+                                  class="text-2xl font-bold text-warning"
+                                  id={"timer-display-#{voting.id}"}
+                                >
+                                  {@remaining_time}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 justify-center">
+                              <%= for card <- PlanningPoker.Poker.card_options(@poker.card_type) do %>
+                                <div
+                                  class="poker-card"
+                                  phx-click="submit_vote"
+                                  phx-value-vote={card}
+                                >
+                                  <div class="poker-card-content">
+                                    {card}
+                                  </div>
+                                </div>
+                              <% end %>
+                            </div>
+                            <div class="mt-6">
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-warning"
+                                phx-click="cancel_voting"
+                              >
+                                Cancel Voting
+                              </button>
+                            </div>
+                          </div>
+                        <% else %>
+                          <%!-- Voting Progress - Show after user voted --%>
+                          <div class="text-center mb-6">
+                            <%!-- Timer Hook --%>
+                            <div
+                              id={"voting-timer-#{voting.id}"}
+                              phx-hook=".VotingTimer"
+                              data-remaining-time={@remaining_time || 30}
+                              class="mb-6"
+                            >
+                              <div class="text-center">
+                                <div class="text-sm text-base-content opacity-70">
+                                  Time remaining:
+                                </div>
+                                <div
+                                  class="text-2xl font-bold text-warning"
+                                  id={"timer-display-#{voting.id}"}
+                                >
+                                  {@remaining_time || 30}
+                                </div>
+                              </div>
+                            </div>
+
+                            <h4 class="text-lg font-semibold mb-6">Voting in Progress</h4>
+                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 justify-center">
+                              <%= for participant <- (@voting_participants || []) do %>
+                                <div class="poker-card-progress">
+                                  <div class="poker-card-name">{participant}</div>
+                                  <div class="poker-card-content">
+                                    <%= if Map.has_key?(@user_votes, participant) do %>
+                                      <%= if participant == @user_name do %>
+                                        {@user_votes[participant]}
+                                      <% else %>
+                                        <div class="poker-card-voted">✓</div>
+                                      <% end %>
+                                    <% else %>
+                                      <div class="poker-card-waiting">⏳</div>
+                                    <% end %>
+                                  </div>
+                                </div>
+                              <% end %>
+                            </div>
+
+                            <div class="mt-4">
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-warning"
+                                phx-click="cancel_voting"
+                              >
+                                Cancel Voting
+                              </button>
+                            </div>
+                          </div>
+                        <% end %>
+                      </div>
+
+                      <%!-- Non-participant view --%>
+                      <div :if={@user_name not in (@voting_participants || [])} class="mb-6">
+                        <div class="alert alert-info">
+                          <.icon name="hero-information-circle" class="w-5 h-5" />
+                          <span>
+                            Voting in progress. You are not participating (muted or joined after voting started).
+                          </span>
+                        </div>
+
+                        <%!-- Show voting progress for non-participants --%>
+                        <div class="text-center mt-6">
+                          <%!-- Timer Hook --%>
+                          <div
+                            id={"voting-timer-#{voting.id}"}
+                            phx-hook=".VotingTimer"
+                            data-remaining-time={@remaining_time || 30}
+                            class="mb-6"
+                          >
+                            <div class="text-center">
+                              <div class="text-sm text-base-content opacity-70">
+                                Time remaining:
+                              </div>
+                              <div
+                                class="text-2xl font-bold text-warning"
+                                id={"timer-display-#{voting.id}"}
+                              >
+                                {@remaining_time || 30}
+                              </div>
+                            </div>
+                          </div>
+
+                          <h4 class="text-lg font-semibold mb-6">Voting Progress</h4>
+                          <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 justify-center">
+                            <%= for participant <- (@voting_participants || []) do %>
+                              <div class="poker-card-progress">
+                                <div class="poker-card-name">{participant}</div>
+                                <div class="poker-card-content">
+                                  <%= if Map.has_key?(@user_votes, participant) do %>
+                                    <div class="poker-card-voted">✓</div>
+                                  <% else %>
+                                    <div class="poker-card-waiting">⏳</div>
+                                  <% end %>
+                                </div>
+                              </div>
+                            <% end %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                      <div :if={is_nil(voting.decision)} class="space-y-2">
+                        <button
+                          :if={@voting_status != :voting || @current_voting_id != voting.id}
+                          type="button"
+                          class="btn btn-sm btn-primary w-full"
+                          phx-click="start_voting"
+                          phx-value-voting_id={voting.id}
+                          disabled={PlanningPoker.Poker.closed?(@poker)}
+                        >
+                          Start Voting
+                        </button>
+
+                        <form
+                          phx-submit="set_decision"
+                          phx-value-voting_id={voting.id}
+                          class="flex gap-2"
+                        >
+                          <input
+                            type="text"
+                            name="decision"
+                            placeholder="Enter decision..."
+                            class="input input-sm input-bordered flex-grow"
+                            maxlength="100"
+                            required
+                          />
+                          <button type="submit" class="btn btn-sm btn-success">
+                            Set Decision
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+
+                    <%!-- Decision display --%>
+                    <div
+                      :if={voting.decision}
+                      class="mb-4 p-3 bg-success/10 border border-success/20 rounded-lg"
+                    >
+                      <div class="text-sm text-base-content/70 mb-1">Decision:</div>
+                      <div class="text-base font-semibold text-base-content max-w-md truncate">
+                        <%= if String.length(voting.decision) > 50 do %>
+                          {String.slice(voting.decision, 0, 50)}...
+                        <% else %>
+                          {voting.decision}
+                        <% end %>
+                      </div>
+
+                      <%!-- Remove Decision button for last voting --%>
+                      <div :if={voting == List.last(@poker.votings)} class="mt-3">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline btn-warning w-full"
+                          phx-click="remove_decision"
+                          phx-value-voting_id={voting.id}
+                        >
+                          Remove Decision
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%!-- Voting Form --%>
+          <div :if={@show_voting_form} class="mt-6">
+            <div class="bg-base-100 rounded-lg shadow-sm p-6 border border-base-300">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-base-content">Create New Voting</h3>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost"
+                  phx-click="cancel_voting_form"
+                >
+                  <.icon name="hero-x-mark" class="w-4 h-4" />
+                </button>
+              </div>
+
+              <.form
+                for={@voting_form}
+                id="voting-form"
+                phx-submit="save_voting"
+                phx-change="validate_voting"
+              >
+                <div class="space-y-4">
+                  <.input
+                    field={@voting_form[:title]}
+                    type="text"
+                    label="Title"
+                    placeholder="User story or feature to estimate"
+                    required
+                  />
+
+                  <.input
+                    field={@voting_form[:link]}
+                    type="text"
+                    label="Link (optional)"
+                    placeholder="https://..."
+                  />
+
+                  <div class="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      class="btn btn-ghost"
+                      phx-click="cancel_voting_form"
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                      Save Voting
+                    </button>
+                  </div>
+                </div>
+              </.form>
             </div>
           </div>
 
-          <div class="mt-4">
+          <%!-- Add Voting Button --%>
+          <div :if={!@show_voting_form} class="mt-6">
             <button
               type="button"
-              class="btn btn-primary"
+              class="btn btn-primary w-full"
               phx-click="add_voting"
+              disabled={
+                @voting_status == :voting || PlanningPoker.Poker.closed?(@poker) ||
+                  (length(@poker.votings) > 0 && is_nil(List.last(@poker.votings).decision))
+              }
             >
               Add a Voting
             </button>
           </div>
         </div>
 
-        <%!-- Voting Form --%>
-        <div :if={@show_voting_form} class="mb-8">
+        <%!-- Voting Form when no votings exist --%>
+        <div :if={length(@poker.votings) == 0 && @show_voting_form} class="mb-6">
           <div class="bg-base-100 rounded-lg shadow-sm p-6 border border-base-300">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-semibold text-base-content">Create New Voting</h3>
               <button
                 type="button"
                 class="btn btn-sm btn-ghost"
-                phx-click="cancel_voting"
+                phx-click="cancel_voting_form"
               >
                 <.icon name="hero-x-mark" class="w-4 h-4" />
               </button>
@@ -154,7 +482,7 @@
                   <button
                     type="button"
                     class="btn btn-ghost"
-                    phx-click="cancel_voting"
+                    phx-click="cancel_voting_form"
                   >
                     Cancel
                   </button>
@@ -167,126 +495,78 @@
           </div>
         </div>
 
-        <%!-- Votings List --%>
-        <div :if={length(@poker.votings) > 0} class="space-y-4">
-          <h2 class="text-2xl font-bold text-base-content mb-4">Votings</h2>
-
-          <div class="space-y-3">
-            <%= for voting <- @poker.votings do %>
-              <div class="collapse collapse-arrow bg-base-200 border border-base-300">
-                <input type="checkbox" class="peer" checked={is_nil(voting.decision)} />
-                <div class="collapse-title text-xl font-medium flex items-center justify-between pr-8">
-                  <div class="flex items-center gap-3">
-                    <span>{voting.title}</span>
-                    <div :if={voting.link} class="flex-shrink-0">
-                      <a
-                        href={voting.link}
-                        target="_blank"
-                        class="btn btn-xs btn-outline"
-                        title="Open external link"
-                      >
-                        <.icon name="hero-arrow-top-right-on-square" class="w-3 h-3" />
-                      </a>
-                    </div>
-                  </div>
-
-                  <div :if={voting.decision} class="badge badge-success">
-                    Decision: {voting.decision}
-                  </div>
-                </div>
-
-                <div class="collapse-content">
-                  <div class="pt-4">
-                    <%!-- Show voting rounds here when implemented --%>
-                    <div class="text-base-content opacity-70 mb-4">
-                      Voting rounds will be displayed here.
-                    </div>
-
-                    <div class="flex flex-col gap-3">
-                      <%!-- Decision actions --%>
-                      <div :if={voting.decision} class="flex items-center gap-2">
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-outline btn-warning"
-                          phx-click="remove_decision"
-                          phx-value-voting_id={voting.id}
-                        >
-                          Remove Decision
-                        </button>
-                      </div>
-
-                      <div :if={is_nil(voting.decision)} class="space-y-2">
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-primary"
-                          disabled
-                        >
-                          Start Voting (Not implemented)
-                        </button>
-
-                        <form
-                          phx-submit="set_decision"
-                          phx-value-voting_id={voting.id}
-                          class="flex gap-2"
-                        >
-                          <input
-                            type="text"
-                            name="decision"
-                            placeholder="Enter decision..."
-                            class="input input-sm input-bordered flex-grow"
-                            maxlength="100"
-                            required
-                          />
-                          <button type="submit" class="btn btn-sm btn-success">
-                            Set Decision
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          </div>
+        <%!-- Add Voting Button (when no votings exist) --%>
+        <div :if={length(@poker.votings) == 0 && !@show_voting_form} class="mb-6">
+          <button
+            type="button"
+            class="btn btn-primary w-full"
+            phx-click="add_voting"
+            disabled={@voting_status == :voting || PlanningPoker.Poker.closed?(@poker)}
+          >
+            Add a Voting
+          </button>
         </div>
       </div>
 
       <div class="space-y-6">
         <div class="text-center">
-          <div class="badge badge-primary badge-lg">
-            {String.replace(@poker.card_type || "fibonacci", "-", " ") |> String.upcase()}
+          <div class="w-full py-2 px-4 bg-base-100 text-base-content rounded-lg">
+            <span class="text-sm font-medium opacity-70">
+              {String.replace(@poker.card_type || "fibonacci", "-", " ") |> String.upcase()}
+            </span>
           </div>
         </div>
-
-        <div class="space-y-3">
+        
+<!-- Action Buttons -->
+        <div :if={!PlanningPoker.Poker.closed?(@poker)} class="flex gap-2">
           <button
             type="button"
-            class={[
-              "btn w-full",
-              if(PlanningPoker.Poker.closed?(@poker), do: "btn-success", else: "btn-warning")
-            ]}
+            class="btn btn-error flex-1 tooltip"
             phx-click="toggle_session_state"
+            data-tip="Terminate the poker session for all users"
           >
-            {if PlanningPoker.Poker.closed?(@poker), do: "Reopen", else: "Close"}
+            <.icon name="hero-no-symbol" class="w-4 h-4" /> Terminate
           </button>
           <button
             type="button"
-            class="btn btn-outline btn-error w-full"
+            class="btn btn-outline flex-1 tooltip"
             phx-click="leave_session"
+            data-tip="Leave this session and return home"
           >
-            Leave
+            <.icon name="hero-arrow-left-on-rectangle" class="w-4 h-4" /> Leave
           </button>
         </div>
-
-        <div :if={length(@users) > 0}>
+        
+<!-- Action buttons when session is closed -->
+        <div :if={PlanningPoker.Poker.closed?(@poker)} class="flex gap-2">
+          <button
+            type="button"
+            class="btn btn-success flex-1 tooltip"
+            phx-click="toggle_session_state"
+            data-tip="Reopen the session to allow new voting"
+          >
+            <.icon name="hero-play" class="w-4 h-4" /> Reopen
+          </button>
+          <button
+            type="button"
+            class="btn btn-error flex-1 tooltip"
+            phx-click="delete_session"
+            data-tip="Permanently delete this poker session and all data"
+          >
+            <.icon name="hero-trash" class="w-4 h-4" /> Delete
+          </button>
+        </div>
+        
+<!-- User List (only show when session is not closed) -->
+        <div :if={!PlanningPoker.Poker.closed?(@poker) && length(@online_users) > 0}>
           <h3 class="text-lg font-semibold text-base-content mb-3">
-            Active Users ({length(@users)})
+            Active Users ({length(@online_users)})
           </h3>
           <div class="card bg-base-200 p-4">
             <div class="space-y-2">
               <%= if @user_name do %>
                 <% current_user = Enum.find(@users, &(&1.username == @user_name)) %>
-                <%= if current_user && PlanningPoker.Poker.PokerUser.online?(current_user) do %>
+                <%= if current_user && current_user.online do %>
                   <div class="flex items-center justify-between bg-primary text-primary-content px-3 py-2 rounded">
                     <div class="flex items-center gap-2">
                       <div class={[
@@ -300,9 +580,13 @@
                     </div>
                     <button
                       type="button"
-                      class="btn btn-xs btn-ghost text-primary-content hover:bg-primary-focus"
+                      class="btn btn-xs btn-ghost text-primary-content hover:bg-primary-focus tooltip"
                       phx-click="toggle_mute"
-                      title={if current_user.muted, do: "Unmute", else: "Mute"}
+                      data-tip={
+                        if current_user.muted,
+                          do: "Unmute yourself to participate in voting",
+                          else: "Mute yourself to skip voting"
+                      }
                     >
                       <.icon :if={!current_user.muted} name="hero-speaker-x-mark" class="w-4 h-4" />
                       <.icon :if={current_user.muted} name="hero-speaker-wave" class="w-4 h-4" />
@@ -311,7 +595,7 @@
                 <% end %>
               <% end %>
 
-              <%= for user <- @users, user.username != @user_name && PlanningPoker.Poker.PokerUser.online?(user) do %>
+              <%= for user <- @users, user.username != @user_name && user.online do %>
                 <div class="flex items-center gap-2 px-3 py-2">
                   <div class={[
                     "w-2 h-2 rounded-full",
@@ -324,7 +608,7 @@
                 </div>
               <% end %>
 
-              <%= for user <- @users, !PlanningPoker.Poker.PokerUser.online?(user) do %>
+              <%= for user <- @users, !user.online do %>
                 <div class="flex items-center gap-2 px-3 py-2 opacity-60">
                   <div class="w-2 h-2 rounded-full bg-base-content opacity-40"></div>
                   <span class="font-medium text-base-content line-through">
@@ -338,6 +622,71 @@
         </div>
       </div>
 
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".AutoScrollToVoting">
+        export default {
+          mounted() {
+            // Auto-scroll to voting interface when it appears for unmuted users
+            const votingInterface = document.getElementById('voting-interface');
+            if (votingInterface) {
+              votingInterface.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+              });
+            }
+          }
+        }
+      </script>
+
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".VotingTimer">
+        export default {
+          mounted() {
+            this.startTimer();
+          },
+          
+          updated() {
+            // Clear existing timer and start fresh when component updates
+            if (this.interval) {
+              clearInterval(this.interval);
+            }
+            this.startTimer();
+          },
+          
+          startTimer() {
+            // Get initial time from data attribute or default to 30
+            let timeLeft = parseInt(this.el.dataset.remainingTime || '30');
+            const timerId = this.el.id.replace('voting-timer-', 'timer-display-');
+            const timerDisplay = document.getElementById(timerId);
+            
+            if (!timerDisplay) return;
+            
+            // Update display immediately
+            timerDisplay.textContent = timeLeft;
+            
+            this.interval = setInterval(() => {
+              timeLeft--;
+              timerDisplay.textContent = timeLeft;
+              
+              if (timeLeft <= 10) {
+                timerDisplay.classList.add('text-error');
+                timerDisplay.classList.remove('text-warning');
+              }
+              
+              if (timeLeft <= 0) {
+                clearInterval(this.interval);
+                timerDisplay.textContent = 'Time up!';
+                // Voting will automatically end on server side
+              }
+            }, 1000);
+          },
+          
+          destroyed() {
+            if (this.interval) {
+              clearInterval(this.interval);
+            }
+          }
+        }
+      </script>
+
       <script :type={Phoenix.LiveView.ColocatedHook} name=".CopyToClipboard">
         export default {
           mounted() {
@@ -349,7 +698,7 @@
                   const icon = this.el.querySelector('span[class*="hero-"]');
                   if (icon) {
                     const originalClasses = icon.className;
-                    icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-green-600');
+                    icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-success');
                     setTimeout(() => {
                       icon.className = originalClasses;
                     }, 1500);
@@ -365,7 +714,7 @@
                   const icon = this.el.querySelector('span[class*="hero-"]');
                   if (icon) {
                     const originalClasses = icon.className;
-                    icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-green-600');
+                    icon.className = originalClasses.replace('hero-clipboard-document', 'hero-check').replace('opacity-60', 'opacity-100 text-success');
                     setTimeout(() => {
                       icon.className = originalClasses;
                     }, 1500);
@@ -376,63 +725,6 @@
           }
         }
       </script>
-    </div>
-
-    <%!-- Join Mode - User Not Identified --%>
-    <div :if={@mode == :join && !@user_identified} class="max-w-2xl mx-auto">
-      <div class="mb-8">
-        <h1 class="text-4xl font-bold text-base-content mb-4">{@poker.name}</h1>
-      </div>
-
-      <div class="bg-base-100 rounded-lg shadow-md p-6 border border-base-300">
-        <h2 class="text-xl font-semibold text-base-content mb-4">Join Planning Session</h2>
-        <p class="text-base-content opacity-70 mb-6">
-          Please enter your name to join this planning poker session.
-        </p>
-
-        <.form
-          for={@form}
-          id="user-identification-form"
-          phx-submit="identify_user"
-          phx-change="validate"
-        >
-          <div class="space-y-4">
-            <div>
-              <.input
-                field={@form[:name]}
-                type="text"
-                label="Your Name"
-                placeholder="Enter your name"
-                required
-              />
-            </div>
-
-            <div>
-              <label class="flex items-start gap-3 cursor-pointer">
-                <.input
-                  field={@form[:privacy_agreement]}
-                  type="checkbox"
-                  class="checkbox checkbox-primary mt-1"
-                  required
-                />
-                <span class="text-base-content text-sm leading-relaxed">
-                  I agree to the
-                  <.link navigate={~p"/privacy"} target="_blank" class="link link-primary">
-                    data privacy policy
-                  </.link>
-                  and understand that my name and votes will be stored in the database during the session and deleted after 30 days of inactivity.
-                </span>
-              </label>
-            </div>
-
-            <div class="flex justify-end pt-4">
-              <button type="submit" class="btn btn-primary">
-                Join Session
-              </button>
-            </div>
-          </div>
-        </.form>
-      </div>
     </div>
   </div>
 </Layouts.app>

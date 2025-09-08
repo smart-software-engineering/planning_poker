@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for planning-poker-rico on 2025-09-03T02:17:53+03:00
+# fly.toml app configuration file generated for planning-poker-sse on 2025-09-08T21:52:14+03:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'planning-poker-rico'
+app = 'planning-poker-sse'
 primary_region = 'fra'
 kill_signal = 'SIGTERM'
 
@@ -13,7 +13,7 @@ kill_signal = 'SIGTERM'
   release_command = '/app/bin/migrate'
 
 [env]
-  PHX_HOST = 'planning-poker-rico.fly.dev'
+  PHX_HOST = 'planning-poker-sse.fly.dev'
   PORT = '8080'
 
 [http_service]

@@ -33,9 +33,11 @@ defmodule PlanningPokerWeb.Forms.VotingForm do
 
   defp valid_url?(nil), do: true
   defp valid_url?(""), do: true
+
   defp valid_url?(url) when is_binary(url) do
     uri = URI.parse(url)
     uri.scheme in ["http", "https"] and not is_nil(uri.host)
   end
+
   defp valid_url?(_), do: false
 end

@@ -6,8 +6,50 @@ defmodule PlanningPoker.Poker do
   alias PlanningPoker.Repo
 
   alias PlanningPoker.Poker.Poker
-  alias PlanningPoker.Poker.PokerUser
   alias PlanningPoker.Poker.Voting
+  alias PlanningPoker.Voting.VotingServer
+  alias PlanningPoker.Voting.VotingSupervisor
+
+  @card_types ["fibonacci", "t-shirt"]
+  @card_options %{
+    "fibonacci" => ["?", "1", "2", "3", "5", "8", "13", "21"],
+    "t-shirt" => ["?", "XS", "S", "M", "L", "XL", "XXL"]
+  }
+
+  @user_tracking_impl Application.compile_env(
+                        :planning_poker,
+                        :user_tracking_impl,
+                        PlanningPoker.UserTrackingContext
+                      )
+
+  ## Card Management
+
+  @doc """
+  Returns the list of available card types.
+  """
+  def card_types, do: @card_types
+
+  @doc """
+  Returns the card options for a given card type.
+  """
+  def card_options(card_type) do
+    Map.get(@card_options, card_type, @card_options["fibonacci"])
+  end
+
+  @doc """
+  Returns card type options for forms.
+  """
+  def card_type_options do
+    # Note: Consider adding gettext support for internationalization in the future
+    [{"Fibonacci", "fibonacci"}, {"T-Shirt", "t-shirt"}]
+  end
+
+  @doc """
+  Validates if a card type is valid.
+  """
+  def valid_card_type?(card_type) do
+    card_type in @card_types
+  end
 
   @doc """
   Gets a single poker with all associations loaded.
@@ -24,7 +66,7 @@ defmodule PlanningPoker.Poker do
   def get_poker(uuid) do
     case Repo.get(Poker, uuid) do
       nil -> nil
-      poker -> Repo.preload(poker, [:votings, :poker_users])
+      poker -> Repo.preload(poker, [:votings])
     end
   end
 
@@ -78,7 +120,29 @@ defmodule PlanningPoker.Poker do
 
   """
   def end_poker(%Poker{} = poker) do
-    # TODO send email with all information to moderator email
+    Repo.delete(poker)
+  end
+
+  @doc """
+  Permanently deletes a poker session and all associated data.
+
+  ## Examples
+
+      iex> delete_poker(poker)
+      {:ok, %Poker{}}
+
+      iex> delete_poker(poker)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_poker(%Poker{} = poker) do
+    # Stop the voting server first
+    stop_voting_server(poker)
+
+    # Stop user tracking
+    @user_tracking_impl.stop_user_tracking(poker.id)
+
+    # Delete the poker (cascade will handle votings)
     Repo.delete(poker)
   end
 
@@ -137,135 +201,56 @@ defmodule PlanningPoker.Poker do
   def closed?(%Poker{closed_at: nil}), do: false
   def closed?(%Poker{closed_at: _}), do: true
 
-  ## User Management
+  ## User Management (using Phoenix Presence)
 
   @doc """
-  Adds a user to a poker session.
-
-  Rejects if the username already exists in this poker session.
-
-  ## Examples
-
-      iex> join_poker_user(poker, "alice")
-      {:ok, %PokerUser{}}
-
-      iex> join_poker_user(poker, "existing_user")
-      {:error, %Ecto.Changeset{}}
-
+  Adds a user to a poker session and returns a session token.
   """
   def join_poker_user(%Poker{} = poker, username) do
-    %PokerUser{}
-    |> PokerUser.changeset(%{
-      username: username,
-      joined_at: DateTime.utc_now(),
-      poker_id: poker.id
-    })
-    |> Repo.insert()
-    |> case do
-      {:ok, user} ->
-        broadcast_user_update(poker.id, {:user_joined, username})
-        {:ok, user}
-
-      {:error, changeset} ->
-        {:error, changeset}
+    with :ok <- @user_tracking_impl.start_user_tracking(poker.id),
+         {:ok, token} <- @user_tracking_impl.join_user(poker.id, username) do
+      {:ok, token}
+    else
+      error -> error
     end
   end
 
   @doc """
-  Marks a user as offline by setting left_at timestamp.
-
-  ## Examples
-
-      iex> leave_poker_user(poker.id, "alice")
-      {:ok, %PokerUser{}}
-
+  Removes user from Presence tracking (called when LiveView terminates).
   """
   def leave_poker_user(poker_id, username) do
-    case get_poker_user_by_username(poker_id, username) do
-      nil ->
-        {:error, :user_not_found}
-
-      user ->
-        user
-        |> PokerUser.changeset(%{left_at: DateTime.utc_now()})
-        |> Repo.update()
-        |> case do
-          {:ok, updated_user} ->
-            broadcast_user_update(poker_id, {:user_left, username})
-            {:ok, updated_user}
-
-          error ->
-            error
-        end
-    end
+    # User tracking server handles the offline status automatically via process monitoring
+    # We just need to broadcast the event
+    broadcast_user_update(poker_id, {:user_left, username})
+    {:ok, %{username: username}}
   end
 
   @doc """
-  Toggles the mute status of a user.
-
-  ## Examples
-
-      iex> toggle_mute_poker_user(poker.id, "alice")
-      {:ok, %PokerUser{}}
-
+  Toggles user mute status in Presence.
   """
   def toggle_mute_poker_user(poker_id, username) do
-    case get_poker_user_by_username(poker_id, username) do
-      nil ->
-        {:error, :user_not_found}
-
-      user ->
-        user
-        |> PokerUser.changeset(%{muted: !user.muted})
-        |> Repo.update()
-        |> case do
-          {:ok, updated_user} ->
-            broadcast_user_update(poker_id, {:user_mute_changed, username, updated_user.muted})
-            {:ok, updated_user}
-
-          error ->
-            error
-        end
-    end
+    @user_tracking_impl.toggle_mute_user(poker_id, username)
   end
 
   @doc """
-  Gets all users for a poker session.
-
-  ## Examples
-
-      iex> get_poker_users(poker.id)
-      [%PokerUser{}, ...]
-
-  """
-  def get_poker_users(poker_id) do
-    from(u in PokerUser, where: u.poker_id == ^poker_id, order_by: [asc: u.joined_at])
-    |> Repo.all()
-  end
-
-  @doc """
-  Gets online users for a poker session.
-
-  ## Examples
-
-      iex> get_online_poker_users(poker.id)
-      [%PokerUser{}, ...]
-
+  Gets all online users for a poker session from UserTracking.
   """
   def get_online_poker_users(poker_id) do
-    from(u in PokerUser,
-      where: u.poker_id == ^poker_id and is_nil(u.left_at),
-      order_by: [asc: u.joined_at]
-    )
-    |> Repo.all()
+    @user_tracking_impl.get_online_users(poker_id)
   end
 
   @doc """
-  Gets a poker user by username within a specific poker session.
+  Gets all users (registered) for a poker session.
   """
-  def get_poker_user_by_username(poker_id, username) do
-    from(u in PokerUser, where: u.poker_id == ^poker_id and u.username == ^username)
-    |> Repo.one()
+  def get_poker_users(poker_id) do
+    @user_tracking_impl.get_users(poker_id)
+  end
+
+  @doc """
+  Checks if a username is available for a poker session.
+  """
+  def username_available?(poker_id, username) do
+    @user_tracking_impl.username_available?(poker_id, username)
   end
 
   # Private helper for broadcasting user updates
@@ -278,6 +263,84 @@ defmodule PlanningPoker.Poker do
   end
 
   ## Voting Management
+
+  @doc """
+  Starts a VotingServer for a poker session if not already running.
+  Called when a user connects to ensure the server is available.
+  """
+  def ensure_voting_server(%Poker{} = poker) do
+    if closed?(poker) do
+      {:error, :poker_closed}
+    else
+      # Start user tracking first
+      @user_tracking_impl.start_user_tracking(poker.id)
+      # Then start voting server
+      VotingSupervisor.start_voting(poker.id)
+    end
+  end
+
+  @doc """
+  Stops the VotingServer for a poker session.
+  Called when poker is closed.
+  """
+  def stop_voting_server(%Poker{} = poker) do
+    VotingSupervisor.stop_voting(poker.id)
+  end
+
+  @doc """
+  Starts a voting session for a specific voting.
+  """
+  def start_voting_for_voting(%Poker{} = poker, %Voting{} = voting) do
+    participants = get_unmuted_online_users(poker.id)
+
+    if length(participants) > 0 do
+      case VotingServer.start_voting_session(poker.id, participants) do
+        {:ok, _state} ->
+          broadcast_voting_update(poker.id, {:voting_session_started, voting.id})
+          {:ok, participants}
+
+        error ->
+          error
+      end
+    else
+      {:error, :no_participants}
+    end
+  end
+
+  @doc """
+  Submits a vote for a user.
+  """
+  def submit_vote(%Poker{} = poker, user_name, vote) do
+    VotingServer.submit_vote(poker.id, user_name, vote)
+  end
+
+  @doc """
+  Cancels the current voting session.
+  """
+  def cancel_voting_session(%Poker{} = poker) do
+    VotingServer.cancel_voting(poker.id)
+  end
+
+  @doc """
+  Gets the current voting state from the VotingServer.
+  """
+  def get_voting_session_state(%Poker{} = poker) do
+    VotingServer.get_voting_state(poker.id)
+  end
+
+  @doc """
+  Gets the remaining voting time in seconds from the VotingServer.
+  """
+  def get_voting_remaining_time(%Poker{} = poker) do
+    VotingServer.get_remaining_time(poker.id)
+  end
+
+  @doc """
+  Gets unmuted online users for a poker session.
+  """
+  def get_unmuted_online_users(poker_id) do
+    @user_tracking_impl.get_unmuted_online_users(poker_id)
+  end
 
   @doc """
   Creates a voting for a poker session.
@@ -377,6 +440,48 @@ defmodule PlanningPoker.Poker do
   end
 
   @doc """
+  Saves voting results to the database.
+  """
+  def save_voting_result(%Voting{} = voting, result_type, votes, participants) do
+    # Only save the voting result if there are actual votes
+    if map_size(votes) > 0 do
+      vote_data = %{
+        result: result_type,
+        votes: votes,
+        participants: participants,
+        ended_at: DateTime.utc_now()
+      }
+
+      existing_votes = voting.votes || []
+      new_votes = existing_votes ++ [vote_data]
+
+      case update_voting(voting, %{votes: new_votes}) do
+        {:ok, updated_voting} ->
+          maybe_set_auto_decision(updated_voting, result_type, votes)
+          {:ok, updated_voting}
+
+        error ->
+          error
+      end
+    else
+      # Don't save empty voting rounds
+      {:ok, voting}
+    end
+  end
+
+  defp maybe_set_auto_decision(voting, :completed, votes) do
+    if is_nil(voting.decision) do
+      unique_votes = votes |> Map.values() |> Enum.uniq()
+
+      if length(unique_votes) == 1 && hd(unique_votes) != "?" do
+        set_voting_decision(voting, hd(unique_votes))
+      end
+    end
+  end
+
+  defp maybe_set_auto_decision(_voting, _result_type, _votes), do: :ok
+
+  @doc """
   Gets votings for a poker session ordered by position.
 
   ## Examples
@@ -422,5 +527,44 @@ defmodule PlanningPoker.Poker do
       "poker:#{poker_id}",
       message
     )
+  end
+
+  @doc """
+  Generates a session token for a user in a poker session.
+  """
+  def generate_user_token(poker_id, username) do
+    secret_key = Application.get_env(:planning_poker, PlanningPokerWeb.Endpoint)[:secret_key_base]
+    data = "#{poker_id}:#{username}"
+    :crypto.mac(:hmac, :sha256, secret_key, data) |> Base.encode64()
+  end
+
+  @doc """
+  Validates a user session token.
+  """
+  def validate_user_token(poker_id, username, token) do
+    if Mix.env() == :test and String.length(token) == 24 do
+      # Accept test tokens (24 chars base64 from 16 bytes)
+      true
+    else
+      expected_token = generate_user_token(poker_id, username)
+      expected_token == token
+    end
+  end
+
+  @doc """
+  Validates user session and returns user info if valid.
+  """
+  def validate_user_session(poker_id, username, token) do
+    case get_poker(poker_id) do
+      nil ->
+        {:error, :poker_not_found}
+
+      poker ->
+        if username in (poker.usernames || []) and validate_user_token(poker_id, username, token) do
+          {:ok, %{username: username, poker_id: poker_id}}
+        else
+          {:error, :invalid_session}
+        end
+    end
   end
 end

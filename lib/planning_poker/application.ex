@@ -12,8 +12,14 @@ defmodule PlanningPoker.Application do
       PlanningPoker.Repo,
       {DNSCluster, query: Application.get_env(:planning_poker, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: PlanningPoker.PubSub},
+      PlanningPokerWeb.Presence,
+      # Registry for tracking processes
+      {Registry, keys: :unique, name: PlanningPoker.Registry},
       # Game management
       {PlanningPoker.Voting.VotingSupervisor, []},
+      {PlanningPoker.UserTracking.UserTrackingSupervisor, []},
+      # Cleanup scheduler for data privacy compliance
+      PlanningPoker.Poker.CleanupScheduler,
       # Start a worker by calling: PlanningPoker.Worker.start_link(arg)
       # {PlanningPoker.Worker, arg},
       # Start to serve requests, typically the last entry

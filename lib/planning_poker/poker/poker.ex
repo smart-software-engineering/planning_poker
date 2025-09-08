@@ -8,9 +8,9 @@ defmodule PlanningPoker.Poker.Poker do
     field :name, :string
     field :card_type, :string, default: "fibonacci"
     field :closed_at, :utc_datetime
+    field :usernames, {:array, :string}, default: []
 
     has_many :votings, PlanningPoker.Poker.Voting, preload_order: [asc: :position]
-    has_many :poker_users, PlanningPoker.Poker.PokerUser, preload_order: [asc: :joined_at]
 
     timestamps(type: :utc_datetime)
   end
@@ -18,7 +18,7 @@ defmodule PlanningPoker.Poker.Poker do
   @doc false
   def changeset(poker, attrs) do
     poker
-    |> cast(attrs, [:name, :card_type])
+    |> cast(attrs, [:name, :card_type, :usernames])
     |> validate_required([:name])
     |> validate_inclusion(:card_type, ["fibonacci", "t-shirt"])
   end

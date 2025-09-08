@@ -24,12 +24,18 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/planning_poker"
 import topbar from "../vendor/topbar"
+import {AutoDismissFlash} from "./hooks/auto_dismiss_flash"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, AutoDismissFlash},
+  // Extended timeouts for planning poker discussions
+  timeout: 20000,        // 20 seconds timeout for operations (Phoenix default)
+  heartbeatIntervalMs: 30000,  // 30 seconds heartbeat (Phoenix default)
+  rejoinAfterMs: tries => [1000, 2000, 5000, 10000][tries - 1] || 10000,  // Progressive reconnection
+  // The connection will stay alive longer with less frequent heartbeats
 })
 
 // Show progress bar on live navigation and form submits
@@ -39,6 +45,25 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()
+
+// Handle Safari background tab issues and add keep-alive
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // Tab became visible again - ensure connection is active
+    if (!liveSocket.isConnected()) {
+      console.log('Tab became visible, reconnecting LiveSocket...')
+      liveSocket.connect()
+    }
+  }
+})
+
+// Client-side keep-alive to prevent disconnections during long discussions
+setInterval(() => {
+  if (liveSocket.isConnected()) {
+    // Send a small ping to keep the connection alive
+    liveSocket.pushEvent('ping')
+  }
+}, 60000) // Every 60 seconds
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()
