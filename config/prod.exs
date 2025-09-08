@@ -22,3 +22,8 @@ config :planning_poker, :user_tracking_impl, PlanningPoker.UserTrackingContext
 
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.
+config :sentry,
+  environment_name: :prod,
+  traces_sample_rate: 0.2,
+  enable_source_code_context: true,
+  client: PlanningPoker.SentryReqClient

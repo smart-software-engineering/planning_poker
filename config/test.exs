@@ -38,3 +38,9 @@ config :phoenix_live_view,
 
 # Use mock implementation for user tracking in tests
 config :planning_poker, :user_tracking_impl, PlanningPoker.UserTrackingMock
+
+# Disable Sentry in test
+config :sentry,
+  dsn: nil,
+  environment_name: :test,
+  client: RateCalculator.SentryReqClient

@@ -89,3 +89,9 @@ config :swoosh, :api_client, false
 
 # Use real UserTrackingContext implementation in development
 config :planning_poker, :user_tracking_impl, PlanningPoker.UserTrackingContext
+
+# Disable Sentry in development
+config :sentry,
+  dsn: nil,
+  environment_name: :development,
+  client: RateCalculator.SentryReqClient
