@@ -102,7 +102,7 @@
               Real-time poker functionality will be implemented here.
             </div>
           </div>
-          
+
           <div class="mt-4">
             <button
               type="button"
@@ -127,11 +127,11 @@
                 <.icon name="hero-x-mark" class="w-4 h-4" />
               </button>
             </div>
-            
-            <.form 
-              for={@voting_form} 
-              id="voting-form" 
-              phx-submit="save_voting" 
+
+            <.form
+              for={@voting_form}
+              id="voting-form"
+              phx-submit="save_voting"
               phx-change="validate_voting"
             >
               <div class="space-y-4">
@@ -142,17 +142,17 @@
                   placeholder="User story or feature to estimate"
                   required
                 />
-                
+
                 <.input
                   field={@voting_form[:link]}
                   type="text"
                   label="Link (optional)"
                   placeholder="https://..."
                 />
-                
+
                 <div class="flex gap-2 justify-end">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     class="btn btn-ghost"
                     phx-click="cancel_voting"
                   >
@@ -170,7 +170,7 @@
         <%!-- Votings List --%>
         <div :if={length(@poker.votings) > 0} class="space-y-4">
           <h2 class="text-2xl font-bold text-base-content mb-4">Votings</h2>
-          
+
           <div class="space-y-3">
             <%= for voting <- @poker.votings do %>
               <div class="collapse collapse-arrow bg-base-200 border border-base-300">
@@ -179,9 +179,9 @@
                   <div class="flex items-center gap-3">
                     <span>{voting.title}</span>
                     <div :if={voting.link} class="flex-shrink-0">
-                      <a 
-                        href={voting.link} 
-                        target="_blank" 
+                      <a
+                        href={voting.link}
+                        target="_blank"
                         class="btn btn-xs btn-outline"
                         title="Open external link"
                       >
@@ -189,19 +189,19 @@
                       </a>
                     </div>
                   </div>
-                  
+
                   <div :if={voting.decision} class="badge badge-success">
                     Decision: {voting.decision}
                   </div>
                 </div>
-                
+
                 <div class="collapse-content">
                   <div class="pt-4">
                     <%!-- Show voting rounds here when implemented --%>
                     <div class="text-base-content opacity-70 mb-4">
                       Voting rounds will be displayed here.
                     </div>
-                    
+
                     <div class="flex flex-col gap-3">
                       <%!-- Decision actions --%>
                       <div :if={voting.decision} class="flex items-center gap-2">
@@ -214,7 +214,7 @@
                           Remove Decision
                         </button>
                       </div>
-                      
+
                       <div :if={is_nil(voting.decision)} class="space-y-2">
                         <button
                           type="button"
@@ -223,8 +223,12 @@
                         >
                           Start Voting (Not implemented)
                         </button>
-                        
-                        <form phx-submit="set_decision" phx-value-voting_id={voting.id} class="flex gap-2">
+
+                        <form
+                          phx-submit="set_decision"
+                          phx-value-voting_id={voting.id}
+                          class="flex gap-2"
+                        >
                           <input
                             type="text"
                             name="decision"

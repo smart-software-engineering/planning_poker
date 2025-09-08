@@ -137,7 +137,6 @@ defmodule PlanningPokerWeb.PokerLiveTest do
       assert html =~ "Share"
     end
 
-    @tag :skip
     test "toggle_mute changes mute status and updates UI", %{conn: conn, poker: poker} do
       {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
       join_session(view)
@@ -192,18 +191,17 @@ defmodule PlanningPokerWeb.PokerLiveTest do
       assert_redirect(view, "/")
     end
 
-    @tag :skip
     test "user list shows correct mute status styling", %{conn: conn, poker: poker} do
       {:ok, view, _html} = live(conn, ~p"/poker/#{poker.id}")
       join_session(view)
 
       html = render(view)
-      refute html =~ "bg-red-400"
+      refute html =~ "bg-error"
 
       view |> element("button[phx-click='toggle_mute']") |> render_click()
 
       html = render(view)
-      assert html =~ "bg-red-400"
+      assert html =~ "bg-error"
     end
 
     test "shows card type badge", %{conn: conn, poker: poker} do

@@ -1,4 +1,4 @@
-defmodule PlanningPoker.PokerSupervisor do
+defmodule PlanningPoker.Voting.VotingSupervisor do
   use DynamicSupervisor
   require Logger
 
@@ -12,35 +12,35 @@ defmodule PlanningPoker.PokerSupervisor do
   end
 
   @doc """
-  Starts a PokerServer for the given poker ID.
+  Starts a VotingServer for the given poker ID.
   """
-  def start_poker(poker_id) do
+  def start_voting(poker_id) do
     child_spec = %{
-      id: PlanningPoker.PokerServer,
-      start: {PlanningPoker.PokerServer, :start_link, [poker_id]},
+      id: PlanningPoker.Voting.VotingServer,
+      start: {PlanningPoker.Voting.VotingServer, :start_link, [poker_id]},
       restart: :transient
     }
 
     case DynamicSupervisor.start_child(__MODULE__, child_spec) do
       {:ok, pid} ->
-        Logger.info("Started PokerServer for poker #{poker_id}")
+        Logger.info("Started VotingServer for poker #{poker_id}")
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
-        Logger.debug("PokerServer for poker #{poker_id} already running")
+        Logger.debug("VotingServer for poker #{poker_id} already running")
         {:ok, pid}
 
       {:error, reason} ->
-        Logger.error("Failed to start PokerServer for poker #{poker_id}: #{inspect(reason)}")
+        Logger.error("Failed to start VotingServer for poker #{poker_id}: #{inspect(reason)}")
         {:error, reason}
     end
   end
 
   @doc """
-  Stops the PokerServer for the given poker ID.
+  Stops the VotingServer for the given poker ID.
   """
-  def stop_poker(poker_id) do
-    case :global.whereis_name({:poker_server, poker_id}) do
+  def stop_voting(poker_id) do
+    case :global.whereis_name({:voting_server, poker_id}) do
       :undefined ->
         {:error, :not_found}
 
@@ -50,12 +50,12 @@ defmodule PlanningPoker.PokerSupervisor do
   end
 
   @doc """
-  Lists all currently running poker sessions.
+  Lists all currently running voting sessions.
   """
-  def list_poker_sessions do
+  def list_voting_sessions do
     DynamicSupervisor.which_children(__MODULE__)
     |> Enum.map(fn {_id, pid, _type, _modules} ->
-      case GenServer.call(pid, :get_poker_state) do
+      case GenServer.call(pid, :get_voting_state) do
         {:ok, state} -> {state.poker.id, pid}
         _ -> nil
       end

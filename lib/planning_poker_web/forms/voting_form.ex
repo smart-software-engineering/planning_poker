@@ -20,18 +20,22 @@ defmodule PlanningPokerWeb.Forms.VotingForm do
   end
 
   defp validate_url(changeset, field) do
-    validate_change(changeset, field, fn field, value ->
-      case value do
-        nil -> []
-        "" -> []
-        url ->
-          uri = URI.parse(url)
-          if uri.scheme in ["http", "https"] and uri.host do
-            []
-          else
-            [{field, "must be a valid URL"}]
-          end
-      end
-    end)
+    validate_change(changeset, field, &validate_url_format/2)
   end
+
+  defp validate_url_format(field, value) do
+    if valid_url?(value) do
+      []
+    else
+      [{field, "must be a valid URL"}]
+    end
+  end
+
+  defp valid_url?(nil), do: true
+  defp valid_url?(""), do: true
+  defp valid_url?(url) when is_binary(url) do
+    uri = URI.parse(url)
+    uri.scheme in ["http", "https"] and not is_nil(uri.host)
+  end
+  defp valid_url?(_), do: false
 end

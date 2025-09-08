@@ -1,5 +1,5 @@
 defmodule PlanningPoker.PokerTest do
-  use PlanningPoker.DataCase
+  use PlanningPoker.DataCase, async: true
 
   alias PlanningPoker.Poker
 

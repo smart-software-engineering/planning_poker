@@ -2,7 +2,7 @@ defmodule PlanningPokerWeb.PokerLive do
   use PlanningPokerWeb, :live_view
 
   alias PlanningPoker.Poker
-  alias PlanningPokerWeb.Forms.{JoinPokerForm, CreatePokerForm, VotingForm}
+  alias PlanningPokerWeb.Forms.{CreatePokerForm, JoinPokerForm, VotingForm}
 
   def mount(_params, _session, socket) do
     {:ok, socket}
@@ -106,15 +106,15 @@ defmodule PlanningPokerWeb.PokerLive do
 
   def handle_event("add_voting", _params, socket) do
     voting_form = to_form(VotingForm.changeset(%VotingForm{}))
-    
-    {:noreply, 
+
+    {:noreply,
      socket
      |> assign(:show_voting_form, true)
      |> assign(:voting_form, voting_form)}
   end
 
   def handle_event("cancel_voting", _params, socket) do
-    {:noreply, 
+    {:noreply,
      socket
      |> assign(:show_voting_form, false)
      |> assign(:voting_form, nil)}
@@ -137,7 +137,7 @@ defmodule PlanningPokerWeb.PokerLive do
       true ->
         data = Ecto.Changeset.apply_changes(changeset)
         attrs = %{title: data.title, link: data.link}
-        
+
         case Poker.create_voting(poker, attrs) do
           {:ok, _voting} ->
             {:noreply,
@@ -156,11 +156,11 @@ defmodule PlanningPokerWeb.PokerLive do
 
   def handle_event("set_decision", %{"voting_id" => voting_id, "decision" => decision}, socket) do
     voting = Poker.get_voting(voting_id)
-    
+
     case Poker.set_voting_decision(voting, String.trim(decision)) do
       {:ok, _voting} ->
         {:noreply, socket}
-      
+
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, "Failed to set decision")}
     end
@@ -168,11 +168,11 @@ defmodule PlanningPokerWeb.PokerLive do
 
   def handle_event("remove_decision", %{"voting_id" => voting_id}, socket) do
     voting = Poker.get_voting(voting_id)
-    
+
     case Poker.remove_voting_decision(voting) do
       {:ok, _voting} ->
         {:noreply, socket}
-      
+
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, "Failed to remove decision")}
     end

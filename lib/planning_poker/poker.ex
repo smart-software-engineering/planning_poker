@@ -301,7 +301,9 @@ defmodule PlanningPoker.Poker do
       {:ok, voting} ->
         broadcast_voting_update(poker.id, {:voting_created, voting})
         {:ok, voting}
-      error -> error
+
+      error ->
+        error
     end
   end
 
@@ -322,7 +324,9 @@ defmodule PlanningPoker.Poker do
       {:ok, updated_voting} ->
         broadcast_voting_update(voting.poker_id, {:voting_updated, updated_voting})
         {:ok, updated_voting}
-      error -> error
+
+      error ->
+        error
     end
   end
 
@@ -340,7 +344,9 @@ defmodule PlanningPoker.Poker do
       {:ok, deleted_voting} ->
         broadcast_voting_update(voting.poker_id, {:voting_deleted, deleted_voting})
         {:ok, deleted_voting}
-      error -> error
+
+      error ->
+        error
     end
   end
 

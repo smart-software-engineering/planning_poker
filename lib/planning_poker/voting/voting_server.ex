@@ -1,9 +1,9 @@
-defmodule PlanningPoker.PokerServer do
+defmodule PlanningPoker.Voting.VotingServer do
   use GenServer
   require Logger
 
   @doc """
-  Starts a PokerServer for the given poker session ID.
+  Starts a VotingServer for the given poker session ID.
   This server is kept for future voting functionality but currently does nothing.
   """
   def start_link(poker_id) do
@@ -14,19 +14,19 @@ defmodule PlanningPoker.PokerServer do
 
   @impl true
   def init(poker_id) do
-    Logger.info("Starting PokerServer for poker #{poker_id} (placeholder for future voting)")
+    Logger.info("Starting VotingServer for poker #{poker_id} (placeholder for future voting)")
     {:ok, %{poker_id: poker_id}}
   end
 
   @impl true
   def terminate(reason, state) do
-    Logger.info("PokerServer for poker #{state.poker_id} terminating: #{inspect(reason)}")
+    Logger.info("VotingServer for poker #{state.poker_id} terminating: #{inspect(reason)}")
     :ok
   end
 
   ## Private Functions
 
   defp global_name(poker_id) do
-    {:global, {:poker_server, poker_id}}
+    {:global, {:voting_server, poker_id}}
   end
 end
