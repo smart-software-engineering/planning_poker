@@ -40,20 +40,21 @@ defmodule PlanningPoker.UserTrackingBehaviour do
   @doc """
   Gets all users for a poker session.
   """
-  @callback get_users(poker_id :: String.t()) :: [map()]
+  @callback get_users(poker_id :: String.t()) :: [map()] | {:error, term()}
 
   @doc """
   Gets online users for a poker session.
   """
-  @callback get_online_users(poker_id :: String.t()) :: [map()]
+  @callback get_online_users(poker_id :: String.t()) :: [map()] | {:error, term()}
 
   @doc """
   Gets unmuted online users for a poker session.
   """
-  @callback get_unmuted_online_users(poker_id :: String.t()) :: [String.t()]
+  @callback get_unmuted_online_users(poker_id :: String.t()) :: [String.t()] | {:error, term()}
 
   @doc """
   Validates if a username is available for a poker session.
   """
-  @callback username_available?(poker_id :: String.t(), username :: String.t()) :: boolean()
+  @callback username_available?(poker_id :: String.t(), username :: String.t()) ::
+              boolean() | {:error, term()}
 end

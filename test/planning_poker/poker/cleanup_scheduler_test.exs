@@ -9,16 +9,16 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
   import PlanningPoker.PokerFixtures
 
   describe "CleanupScheduler" do
-    test "deletes closed poker sessions older than 10 minutes" do
+    test "deletes closed poker sessions older than 1 hour" do
       # Create a poker session and close it
       poker = poker_fixture()
       {:ok, closed_poker} = Poker.close_poker(poker)
 
-      # Manually set updated_at to be older than 10 minutes
-      eleven_minutes_ago = DateTime.utc_now() |> DateTime.add(-11 * 60, :second)
+      # Manually set updated_at to be older than 1 hour
+      ninety_minutes_ago = DateTime.utc_now() |> DateTime.add(-90 * 60, :second)
 
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^closed_poker.id)
-      |> Repo.update_all(set: [updated_at: eleven_minutes_ago])
+      |> Repo.update_all(set: [updated_at: ninety_minutes_ago])
 
       # Verify poker exists before cleanup
       assert Poker.get_poker(closed_poker.id) != nil
@@ -39,11 +39,11 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
     test "does not delete open poker sessions" do
       poker = poker_fixture()
 
-      # Set updated_at to be older than 10 minutes (but session is not closed)
-      eleven_minutes_ago = DateTime.utc_now() |> DateTime.add(-11 * 60, :second)
+      # Set updated_at to be older than 1 hour (but session is not closed)
+      ninety_minutes_ago = DateTime.utc_now() |> DateTime.add(-90 * 60, :second)
 
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^poker.id)
-      |> Repo.update_all(set: [updated_at: eleven_minutes_ago])
+      |> Repo.update_all(set: [updated_at: ninety_minutes_ago])
 
       # Start the cleanup scheduler and trigger cleanup immediately
       {:ok, pid} = GenServer.start_link(CleanupScheduler, %{})
@@ -62,7 +62,7 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
       poker = poker_fixture()
       {:ok, closed_poker} = Poker.close_poker(poker)
 
-      # Session is closed but recently updated (within 10 minutes)
+      # Session is closed but recently updated (within 1 hour)
       # So it should not be deleted
 
       # Start the cleanup scheduler and trigger cleanup immediately
@@ -88,20 +88,20 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
       {:ok, closed_poker1} = Poker.close_poker(poker1)
       {:ok, closed_poker2} = Poker.close_poker(poker2)
 
-      eleven_minutes_ago = DateTime.utc_now() |> DateTime.add(-11 * 60, :second)
-      five_minutes_ago = DateTime.utc_now() |> DateTime.add(-5 * 60, :second)
+      ninety_minutes_ago = DateTime.utc_now() |> DateTime.add(-90 * 60, :second)
+      thirty_minutes_ago = DateTime.utc_now() |> DateTime.add(-30 * 60, :second)
 
       # Set poker1 to be old enough for deletion
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^closed_poker1.id)
-      |> Repo.update_all(set: [updated_at: eleven_minutes_ago])
+      |> Repo.update_all(set: [updated_at: ninety_minutes_ago])
 
       # Set poker2 to be too recent for deletion
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^closed_poker2.id)
-      |> Repo.update_all(set: [updated_at: five_minutes_ago])
+      |> Repo.update_all(set: [updated_at: thirty_minutes_ago])
 
       # Set poker3 to be old but open (should not be deleted)
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^poker3.id)
-      |> Repo.update_all(set: [updated_at: eleven_minutes_ago])
+      |> Repo.update_all(set: [updated_at: ninety_minutes_ago])
 
       # Start cleanup
       {:ok, pid} = GenServer.start_link(CleanupScheduler, %{})
@@ -116,15 +116,15 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
       GenServer.stop(pid)
     end
 
-    test "auto-terminates poker sessions inactive for 48+ hours" do
+    test "auto-terminates poker sessions inactive for 30+ days" do
       # Create a poker session
       poker = poker_fixture()
 
-      # Set updated_at to be older than 48 hours (but session is still open)
-      forty_nine_hours_ago = DateTime.utc_now() |> DateTime.add(-49 * 60 * 60, :second)
+      # Set updated_at to be older than 30 days (but session is still open)
+      thirty_one_days_ago = DateTime.utc_now() |> DateTime.add(-31 * 24 * 60 * 60, :second)
 
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^poker.id)
-      |> Repo.update_all(set: [updated_at: forty_nine_hours_ago])
+      |> Repo.update_all(set: [updated_at: thirty_one_days_ago])
 
       # Verify poker is open before cleanup
       updated_poker = Poker.get_poker(poker.id)
@@ -147,15 +147,15 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
       GenServer.stop(pid)
     end
 
-    test "does not auto-terminate poker sessions inactive for less than 48 hours" do
+    test "does not auto-terminate poker sessions inactive for less than 30 days" do
       # Create a poker session
       poker = poker_fixture()
 
-      # Set updated_at to be 47 hours ago (less than 48 hours)
-      forty_seven_hours_ago = DateTime.utc_now() |> DateTime.add(-47 * 60 * 60, :second)
+      # Set updated_at to be 29 days ago (less than 30 days)
+      twenty_nine_days_ago = DateTime.utc_now() |> DateTime.add(-29 * 24 * 60 * 60, :second)
 
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^poker.id)
-      |> Repo.update_all(set: [updated_at: forty_seven_hours_ago])
+      |> Repo.update_all(set: [updated_at: twenty_nine_days_ago])
 
       # Verify poker is open before cleanup
       updated_poker = Poker.get_poker(poker.id)
@@ -182,11 +182,11 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
       # Create a poker session
       poker = poker_fixture()
 
-      # Set updated_at to be older than 48 hours
-      forty_nine_hours_ago = DateTime.utc_now() |> DateTime.add(-49 * 60 * 60, :second)
+      # Set updated_at to be older than 30 days
+      thirty_one_days_ago = DateTime.utc_now() |> DateTime.add(-31 * 24 * 60 * 60, :second)
 
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^poker.id)
-      |> Repo.update_all(set: [updated_at: forty_nine_hours_ago])
+      |> Repo.update_all(set: [updated_at: thirty_one_days_ago])
 
       # Start the cleanup scheduler and trigger cleanup immediately
       {:ok, pid} = GenServer.start_link(CleanupScheduler, %{})
@@ -202,11 +202,11 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
       # Now closed
       assert updated_poker.closed_at != nil
 
-      # Manually set the updated_at to be older than 10 minutes to simulate the grace period passing
-      twelve_minutes_ago = DateTime.utc_now() |> DateTime.add(-12 * 60, :second)
+      # Manually set the updated_at to be older than 1 hour to simulate the grace period passing
+      ninety_minutes_ago = DateTime.utc_now() |> DateTime.add(-90 * 60, :second)
 
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^updated_poker.id)
-      |> Repo.update_all(set: [updated_at: twelve_minutes_ago])
+      |> Repo.update_all(set: [updated_at: ninety_minutes_ago])
 
       # Run cleanup again - this time it should delete the auto-terminated session
       send(pid, :cleanup)
@@ -231,9 +231,9 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
 
       # Set up different timestamps
       now = DateTime.utc_now()
-      five_minutes_ago = DateTime.add(now, -5 * 60, :second)
-      eleven_minutes_ago = DateTime.add(now, -11 * 60, :second)
-      forty_nine_hours_ago = DateTime.add(now, -49 * 60 * 60, :second)
+      thirty_minutes_ago = DateTime.add(now, -30 * 60, :second)
+      ninety_minutes_ago = DateTime.add(now, -90 * 60, :second)
+      thirty_one_days_ago = DateTime.add(now, -31 * 24 * 60 * 60, :second)
 
       # Close poker3 and poker4
       {:ok, closed_poker3} = Poker.close_poker(poker3)
@@ -242,19 +242,19 @@ defmodule PlanningPoker.Poker.CleanupSchedulerTest do
       # Set timestamps
       # poker1: recent, open - should stay
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^poker1.id)
-      |> Repo.update_all(set: [updated_at: five_minutes_ago])
+      |> Repo.update_all(set: [updated_at: thirty_minutes_ago])
 
-      # poker2: old, open - should be auto-terminated
+      # poker2: old (30+ days), open - should be auto-terminated
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^poker2.id)
-      |> Repo.update_all(set: [updated_at: forty_nine_hours_ago])
+      |> Repo.update_all(set: [updated_at: thirty_one_days_ago])
 
       # poker3: closed recently - should stay
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^closed_poker3.id)
-      |> Repo.update_all(set: [updated_at: five_minutes_ago])
+      |> Repo.update_all(set: [updated_at: thirty_minutes_ago])
 
-      # poker4: closed old - should be deleted
+      # poker4: closed old (90+ minutes) - should be deleted
       from(p in PlanningPoker.Poker.Poker, where: p.id == ^closed_poker4.id)
-      |> Repo.update_all(set: [updated_at: eleven_minutes_ago])
+      |> Repo.update_all(set: [updated_at: ninety_minutes_ago])
 
       # Run cleanup
       {:ok, pid} = GenServer.start_link(CleanupScheduler, %{})

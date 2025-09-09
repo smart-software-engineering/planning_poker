@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Card background with rounded corners -->
+  <rect width="32" height="32" rx="4" ry="4" fill="white" stroke="#2d3748" stroke-width="1.5"/>
+  
+  <!-- Inner card area -->
+  <rect x="2" y="2" width="28" height="28" rx="3" ry="3" fill="#f7fafc"/>
+  
+  <!-- Question mark in the center -->
+  <text x="16" y="21" font-family="Georgia, serif" font-size="16" font-weight="bold" fill="#2d3748" text-anchor="middle">?</text>
+  
+  <!-- Small decorative elements in corners -->
+  <circle cx="6" cy="6" r="1.5" fill="#e53e3e"/>
+  <circle cx="26" cy="6" r="1.5" fill="#2d3748"/>
+  <circle cx="6" cy="26" r="1.5" fill="#e53e3e"/>
+  <circle cx="26" cy="26" r="1.5" fill="#2d3748"/>
+  
+  <!-- Small poker symbols -->
+  <text x="6" y="9" font-family="serif" font-size="5" fill="#e53e3e" text-anchor="middle">♥</text>
+  <text x="26" y="9" font-family="serif" font-size="5" fill="#2d3748" text-anchor="middle">♠</text>
+  <text x="6" y="29" font-family="serif" font-size="5" fill="#e53e3e" text-anchor="middle">♦</text>
+  <text x="26" y="29" font-family="serif" font-size="5" fill="#2d3748" text-anchor="middle">♣</text>
+</svg>

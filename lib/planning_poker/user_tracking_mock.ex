@@ -63,9 +63,20 @@ defmodule PlanningPoker.UserTrackingMock do
 
   @impl PlanningPoker.UserTrackingBehaviour
   def mark_user_online(poker_id, username, _pid) do
-    # Track online users in ETS table
-    :ets.insert(@online_users_table, {{poker_id, username}, true})
-    {:ok, %{username: username, online: true}}
+    # Check if user exists in the poker session
+    case PlanningPoker.Poker.get_poker(poker_id) do
+      nil ->
+        {:error, :poker_not_found}
+
+      poker ->
+        if username in (poker.usernames || []) do
+          # Track online users in ETS table
+          :ets.insert(@online_users_table, {{poker_id, username}, true})
+          {:ok, %{username: username, online: true}}
+        else
+          {:error, :user_not_found}
+        end
+    end
   end
 
   @impl PlanningPoker.UserTrackingBehaviour

@@ -22,35 +22,50 @@ defmodule PlanningPoker.UserTracking.UserTrackingServer do
   end
 
   def join_user(poker_id, username) do
-    GenServer.call(via_tuple(poker_id), {:join_user, username})
+    safe_call(poker_id, {:join_user, username})
   end
 
   def mark_user_online(poker_id, username, pid) do
-    GenServer.call(via_tuple(poker_id), {:mark_online, username, pid})
+    safe_call(poker_id, {:mark_online, username, pid})
   end
 
   def mark_user_offline(poker_id, username, pid) do
-    GenServer.call(via_tuple(poker_id), {:mark_offline, username, pid})
+    safe_call(poker_id, {:mark_offline, username, pid})
   end
 
   def toggle_mute_user(poker_id, username) do
-    GenServer.call(via_tuple(poker_id), {:toggle_mute, username})
+    safe_call(poker_id, {:toggle_mute, username})
   end
 
   def get_users(poker_id) do
-    GenServer.call(via_tuple(poker_id), :get_users)
+    safe_call(poker_id, :get_users)
   end
 
   def get_online_users(poker_id) do
-    GenServer.call(via_tuple(poker_id), :get_online_users)
+    safe_call(poker_id, :get_online_users)
   end
 
   def get_unmuted_online_users(poker_id) do
-    GenServer.call(via_tuple(poker_id), :get_unmuted_online_users)
+    safe_call(poker_id, :get_unmuted_online_users)
   end
 
   def username_available?(poker_id, username) do
-    GenServer.call(via_tuple(poker_id), {:username_available, username})
+    safe_call(poker_id, {:username_available, username})
+  end
+
+  # Private helper to safely call GenServer
+  defp safe_call(poker_id, message) do
+    case GenServer.whereis(via_tuple(poker_id)) do
+      nil ->
+        {:error, :server_not_available}
+
+      _pid ->
+        try do
+          GenServer.call(via_tuple(poker_id), message)
+        catch
+          :exit, {:noproc, _} -> {:error, :server_not_available}
+        end
+    end
   end
 
   # Server Callbacks

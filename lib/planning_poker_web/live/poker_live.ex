@@ -435,7 +435,7 @@ defmodule PlanningPokerWeb.PokerLive do
         Poker.ensure_voting_server(poker)
 
         # Mark user as online in UserTracking
-        @user_tracking_impl.mark_user_online(poker_id, username, self())
+        handle_user_tracking(poker_id, username)
 
         {:noreply,
          socket
@@ -451,6 +451,26 @@ defmodule PlanningPokerWeb.PokerLive do
          |> reset_voting_state()
          |> assign(:rounds_visibility, %{})
          |> handle_user_diff()}
+    end
+  end
+
+  defp handle_user_tracking(poker_id, username) do
+    case @user_tracking_impl.mark_user_online(poker_id, username, self()) do
+      {:ok, _user} ->
+        :ok
+
+      {:error, :user_not_found} ->
+        # User doesn't exist yet, let them join first
+        case @user_tracking_impl.join_user(poker_id, username) do
+          {:ok, _token} ->
+            @user_tracking_impl.mark_user_online(poker_id, username, self())
+
+          _ ->
+            :ok
+        end
+
+      _ ->
+        :ok
     end
   end
 

@@ -50,18 +50,25 @@
               Your data is stored in our PostgreSQL database while the poker session is running
             </li>
             <li>
-              <strong>After Session Ends:</strong>
-              Session data remains accessible for <strong>10 minutes</strong>
-              to allow reopening if needed
+              <strong>After Session Closure:</strong>
+              Session data remains accessible for <strong>1 hour</strong>
+              after the session is manually closed, then is automatically deleted
+            </li>
+            <li>
+              <strong>Inactive Session Cleanup:</strong>
+              Sessions that remain open but inactive for <strong>30 days</strong>
+              are automatically closed, then deleted <strong>1 hour</strong>
+              later
             </li>
             <li>
               <strong>Database Storage:</strong>
-              Session information, including your name and votes, is stored in our PostgreSQL database
+              All session information, including your name and votes, is stored in our PostgreSQL database
+              during these retention periods
             </li>
             <li>
-              <strong>Automatic Cleanup:</strong>
-              Inactive sessions are automatically deleted after <strong>30 days</strong>
-              of inactivity
+              <strong>No Permanent Storage:</strong>
+              No data is kept permanently - all session data is automatically purged
+              according to the timelines above
             </li>
           </ul>
         </div>

@@ -24,10 +24,11 @@ defmodule PlanningPokerWeb.CreatePokerLiveTest do
       assert html_response(conn, 200)
       html = html_response(conn, 200)
       assert html =~ poker.name
-      assert html =~ "Enter your name to join the session"
       assert html =~ "name=\"join_poker_form[name]\""
       assert html =~ "name=\"join_poker_form[privacy_agreement]\""
       assert html =~ "data privacy policy"
+      assert html =~ "Your Name"
+      assert html =~ "Join Session"
     end
 
     test "requires privacy agreement to join", %{conn: conn, poker: poker} do
@@ -43,7 +44,8 @@ defmodule PlanningPokerWeb.CreatePokerLiveTest do
       # Should stay on join form with error
       assert html_response(conn, 200)
       html = html_response(conn, 200)
-      assert html =~ "Enter your name to join the session"
+      assert html =~ poker.name
+      assert html =~ "Your Name"
     end
 
     test "allows joining with name and privacy agreement", %{conn: conn, poker: poker} do
@@ -73,7 +75,8 @@ defmodule PlanningPokerWeb.CreatePokerLiveTest do
       # Should stay on join form
       assert html_response(conn, 200)
       html = html_response(conn, 200)
-      assert html =~ "Enter your name to join the session"
+      assert html =~ poker.name
+      assert html =~ "Your Name"
     end
 
     test "validates both name and privacy agreement are required", %{conn: conn, poker: poker} do
@@ -89,7 +92,8 @@ defmodule PlanningPokerWeb.CreatePokerLiveTest do
       # Should stay on join form
       assert html_response(conn, 200)
       html = html_response(conn, 200)
-      assert html =~ "Enter your name to join the session"
+      assert html =~ poker.name
+      assert html =~ "Your Name"
     end
 
     test "blocks already taken username", %{conn: conn, poker: poker} do

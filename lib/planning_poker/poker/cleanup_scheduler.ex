@@ -4,20 +4,20 @@ defmodule PlanningPoker.Poker.CleanupScheduler do
 
   This scheduler performs two main cleanup operations:
 
-  1. **Auto-termination**: Poker sessions that are open but inactive for 48+ hours
+  1. **Auto-termination**: Poker sessions that are open but inactive for 30+ days
      are automatically closed. Their updated_at is set to allow deletion after
-     a 10-minute grace period.
+     a 1-hour grace period.
      
-  2. **Deletion**: Poker sessions that have been closed for more than 10 minutes
+  2. **Deletion**: Poker sessions that have been closed for more than 1 hour
      are permanently deleted from the database.
 
-  The scheduler runs every 10 minutes and uses simple SQL statements that are
+  The scheduler runs every hour and uses simple SQL statements that are
   safe to run on multiple instances without complex locking mechanisms.
 
   ## Cleanup Rules
-  - Open sessions: Auto-terminated after 48 hours of inactivity
-  - Closed sessions: Deleted after 10 minutes 
-  - Auto-terminated sessions: Given 5-minute grace period before deletion eligibility
+  - Open sessions: Auto-terminated after 30 days of inactivity
+  - Closed sessions: Deleted after 1 hour 
+  - Auto-terminated sessions: Given 30-minute grace period before deletion eligibility
   """
   use GenServer
 
@@ -26,12 +26,12 @@ defmodule PlanningPoker.Poker.CleanupScheduler do
 
   require Logger
 
-  # Run cleanup every 10 minutes (600,000 milliseconds)
-  @cleanup_interval 10 * 60 * 1000
-  # Delete sessions closed more than 10 minutes ago
-  @cleanup_threshold 10 * 60
-  # Auto-terminate sessions inactive for more than 48 hours
-  @auto_terminate_threshold 48 * 60 * 60
+  # Run cleanup every hour (3,600,000 milliseconds)
+  @cleanup_interval 60 * 60 * 1000
+  # Delete sessions closed more than 1 hour ago
+  @cleanup_threshold 60 * 60
+  # Auto-terminate sessions inactive for more than 30 days
+  @auto_terminate_threshold 30 * 24 * 60 * 60
 
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -40,10 +40,14 @@ defmodule PlanningPoker.Poker.CleanupScheduler do
   @impl true
   def init(state) do
     # Schedule the first cleanup with some jitter to avoid all instances starting at once
-    # 0-60 seconds
-    jitter = :rand.uniform(60_000)
+    # 0-10 minutes
+    jitter = :rand.uniform(10 * 60_000)
     Process.send_after(self(), :cleanup, jitter)
-    Logger.info("PlanningPoker CleanupScheduler started with #{jitter}ms jitter")
+
+    Logger.info(
+      "PlanningPoker CleanupScheduler started with #{div(jitter, 60_000)} minute jitter"
+    )
+
     {:ok, state}
   end
 
@@ -62,10 +66,10 @@ defmodule PlanningPoker.Poker.CleanupScheduler do
 
   defp perform_auto_termination do
     auto_terminate_time = DateTime.utc_now() |> DateTime.add(-@auto_terminate_threshold, :second)
-    # Set updated_at to 5 minutes ago so it won't be immediately deleted
-    future_deletion_time = DateTime.utc_now() |> DateTime.add(-5 * 60, :second)
+    # Set updated_at to 30 minutes ago so it won't be immediately deleted
+    future_deletion_time = DateTime.utc_now() |> DateTime.add(-30 * 60, :second)
 
-    # Find poker sessions that are open but inactive for 48+ hours
+    # Find poker sessions that are open but inactive for 30+ days
     query =
       from p in "poker",
         where: is_nil(p.closed_at) and p.updated_at < ^auto_terminate_time
@@ -75,7 +79,7 @@ defmodule PlanningPoker.Poker.CleanupScheduler do
          ) do
       {count, _} when count > 0 ->
         Logger.info(
-          "CleanupScheduler: Auto-terminated #{count} inactive poker sessions (48+ hours)"
+          "CleanupScheduler: Auto-terminated #{count} inactive poker sessions (30+ days)"
         )
 
       {0, _} ->

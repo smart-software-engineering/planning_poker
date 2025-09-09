@@ -1,4 +1,4 @@
-<Layouts.app flash={@flash}>
+<Layouts.app flash={Map.get(assigns, :flash, %{})}>
   <div class="hero min-h-screen bg-gradient-to-br from-error/10 to-base-200">
     <div class="hero-content text-center max-w-2xl">
       <div>

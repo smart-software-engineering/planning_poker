@@ -53,12 +53,23 @@
                       <div class="space-y-4">
                         <% show_all_rounds = Map.get(@rounds_visibility || %{}, voting.id, false)
                         voting_rounds = voting.votes
+                        round_count = length(voting_rounds)
+                        has_single_round = round_count == 1
+                        has_decision = not is_nil(voting.decision)
 
                         is_voting_active =
-                          @voting_status == :voting && @current_voting_id == voting.id %>
+                          @voting_status == :voting && @current_voting_id == voting.id
 
-                        <%!-- Show rounds toggle button if more than 1 round and not showing all --%>
-                        <%= if length(voting_rounds) > 1 && !show_all_rounds && !is_voting_active do %>
+                        # Button visibility logic
+                        should_show_expand_button =
+                          (round_count > 1 || (has_single_round && has_decision)) &&
+                            !show_all_rounds && !is_voting_active
+
+                        should_show_collapse_button =
+                          show_all_rounds && round_count >= 1 %>
+
+                        <%!-- Show rounds toggle button if: more than 1 round, OR single round with decision --%>
+                        <%= if should_show_expand_button do %>
                           <div class="text-center mb-4">
                             <button
                               type="button"
@@ -66,15 +77,14 @@
                               phx-click="toggle_rounds_visibility"
                               phx-value-voting_id={voting.id}
                             >
-                              <%= if voting.decision do %>
-                                Show all {length(voting_rounds)} round{if length(voting_rounds) !=
-                                                                            1,
-                                                                          do: "s"}
+                              <%= if has_decision do %>
+                                {if has_single_round,
+                                  do: "Show round",
+                                  else:
+                                    "Show all #{round_count} round#{if round_count != 1, do: "s"}"}
                               <% else %>
-                                Show {length(voting_rounds) - 1} previous round{if length(
-                                                                                     voting_rounds
-                                                                                   ) - 1 != 1,
-                                                                                   do: "s"}
+                                Show #{round_count - 1} previous round{if round_count - 1 != 1,
+                                  do: "s"}
                               <% end %>
                             </button>
                           </div>
@@ -83,44 +93,49 @@
                         <%!-- Show rounds based on conditions --%>
                         <% rounds_to_show =
                           cond do
-                            # If voting is active, hide previous rounds (show none for now)
+                            # If voting is active, hide previous rounds
                             is_voting_active ->
                               []
 
-                            # If showing all rounds or only 1 round exists
-                            show_all_rounds || length(voting_rounds) <= 1 ->
+                            # If there's a decision, hide rounds by default unless explicitly showing all
+                            has_decision && !show_all_rounds ->
+                              []
+
+                            # If showing all rounds, show them all
+                            show_all_rounds ->
                               voting_rounds |> Enum.with_index()
 
-                            # If there's a decision, hide the last round by default (show none)
-                            voting.decision && !show_all_rounds ->
-                              []
+                            # If only 1 round exists and no decision, show it
+                            round_count <= 1 ->
+                              voting_rounds |> Enum.with_index()
 
                             # Otherwise show only the last round
                             true ->
                               last_round = List.last(voting_rounds)
-                              last_index = length(voting_rounds) - 1
+                              last_index = round_count - 1
                               [{last_round, last_index}]
                           end %>
 
-                        <%= for {vote_data, index} <- rounds_to_show do %>
+                        <div :for={{vote_data, index} <- rounds_to_show}>
                           <div class="divider divider-neutral">ROUND #{index + 1}</div>
                           <div class="py-2">
                             <%!-- Poker cards for voting results --%>
                             <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                              <%= for {user, vote} <- Map.get(vote_data, "votes", %{}) do %>
-                                <div class="poker-card-result">
-                                  <div class="poker-card-name-small">{user}</div>
-                                  <div class="poker-card-content-small">
-                                    {vote}
-                                  </div>
+                              <div
+                                :for={{user, vote} <- Map.get(vote_data, "votes", %{})}
+                                class="poker-card-result"
+                              >
+                                <div class="poker-card-name-small">{user}</div>
+                                <div class="poker-card-content-small">
+                                  {vote}
                                 </div>
-                              <% end %>
+                              </div>
                             </div>
                           </div>
-                        <% end %>
+                        </div>
 
                         <%!-- Show collapse button if currently showing all rounds --%>
-                        <%= if show_all_rounds && length(voting_rounds) > 1 do %>
+                        <%= if should_show_collapse_button do %>
                           <div class="text-center mt-4">
                             <button
                               type="button"
@@ -128,7 +143,19 @@
                               phx-click="toggle_rounds_visibility"
                               phx-value-voting_id={voting.id}
                             >
-                              Show only latest round
+                              <%= if has_decision do %>
+                                <%= if has_single_round do %>
+                                  Hide round
+                                <% else %>
+                                  Hide rounds
+                                <% end %>
+                              <% else %>
+                                <%= if has_single_round do %>
+                                  Hide round
+                                <% else %>
+                                  Show only latest round
+                                <% end %>
+                              <% end %>
                             </button>
                           </div>
                         <% end %>
@@ -180,17 +207,16 @@
                             </div>
 
                             <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 justify-center">
-                              <%= for card <- PlanningPoker.Poker.card_options(@poker.card_type) do %>
-                                <div
-                                  class="poker-card"
-                                  phx-click="submit_vote"
-                                  phx-value-vote={card}
-                                >
-                                  <div class="poker-card-content">
-                                    {card}
-                                  </div>
+                              <div
+                                :for={card <- PlanningPoker.Poker.card_options(@poker.card_type)}
+                                class="poker-card"
+                                phx-click="submit_vote"
+                                phx-value-vote={card}
+                              >
+                                <div class="poker-card-content">
+                                  {card}
                                 </div>
-                              <% end %>
+                              </div>
                             </div>
                             <div class="mt-6">
                               <button
@@ -227,22 +253,23 @@
 
                             <h4 class="text-lg font-semibold mb-6">Voting in Progress</h4>
                             <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 justify-center">
-                              <%= for participant <- (@voting_participants || []) do %>
-                                <div class="poker-card-progress">
-                                  <div class="poker-card-name">{participant}</div>
-                                  <div class="poker-card-content">
-                                    <%= if Map.has_key?(@user_votes, participant) do %>
-                                      <%= if participant == @user_name do %>
-                                        {@user_votes[participant]}
-                                      <% else %>
-                                        <div class="poker-card-voted">✓</div>
-                                      <% end %>
+                              <div
+                                :for={participant <- @voting_participants || []}
+                                class="poker-card-progress"
+                              >
+                                <div class="poker-card-name">{participant}</div>
+                                <div class="poker-card-content">
+                                  <%= if Map.has_key?(@user_votes, participant) do %>
+                                    <%= if participant == @user_name do %>
+                                      {@user_votes[participant]}
                                     <% else %>
-                                      <div class="poker-card-waiting">⏳</div>
+                                      <div class="poker-card-voted">✓</div>
                                     <% end %>
-                                  </div>
+                                  <% else %>
+                                    <div class="poker-card-waiting">⏳</div>
+                                  <% end %>
                                 </div>
-                              <% end %>
+                              </div>
                             </div>
 
                             <div class="mt-4">
@@ -291,18 +318,19 @@
 
                           <h4 class="text-lg font-semibold mb-6">Voting Progress</h4>
                           <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 justify-center">
-                            <%= for participant <- (@voting_participants || []) do %>
-                              <div class="poker-card-progress">
-                                <div class="poker-card-name">{participant}</div>
-                                <div class="poker-card-content">
-                                  <%= if Map.has_key?(@user_votes, participant) do %>
-                                    <div class="poker-card-voted">✓</div>
-                                  <% else %>
-                                    <div class="poker-card-waiting">⏳</div>
-                                  <% end %>
-                                </div>
+                            <div
+                              :for={participant <- @voting_participants || []}
+                              class="poker-card-progress"
+                            >
+                              <div class="poker-card-name">{participant}</div>
+                              <div class="poker-card-content">
+                                <%= if Map.has_key?(@user_votes, participant) do %>
+                                  <div class="poker-card-voted">✓</div>
+                                <% else %>
+                                  <div class="poker-card-waiting">⏳</div>
+                                <% end %>
                               </div>
-                            <% end %>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -595,28 +623,32 @@
                 <% end %>
               <% end %>
 
-              <%= for user <- @users, user.username != @user_name && user.online do %>
-                <div class="flex items-center gap-2 px-3 py-2">
-                  <div class={[
-                    "w-2 h-2 rounded-full",
-                    if(user.muted, do: "bg-error", else: "bg-success")
-                  ]}>
-                  </div>
-                  <span class="font-medium text-base-content">
-                    {user.username}
-                  </span>
+              <div
+                :for={user <- @users}
+                :if={user.username != @user_name && user.online}
+                class="flex items-center gap-2 px-3 py-2"
+              >
+                <div class={[
+                  "w-2 h-2 rounded-full",
+                  if(user.muted, do: "bg-error", else: "bg-success")
+                ]}>
                 </div>
-              <% end %>
+                <span class="font-medium text-base-content">
+                  {user.username}
+                </span>
+              </div>
 
-              <%= for user <- @users, !user.online do %>
-                <div class="flex items-center gap-2 px-3 py-2 opacity-60">
-                  <div class="w-2 h-2 rounded-full bg-base-content opacity-40"></div>
-                  <span class="font-medium text-base-content line-through">
-                    {user.username}
-                    <span class="sr-only">(offline)</span>
-                  </span>
-                </div>
-              <% end %>
+              <div
+                :for={user <- @users}
+                :if={!user.online}
+                class="flex items-center gap-2 px-3 py-2 opacity-60"
+              >
+                <div class="w-2 h-2 rounded-full bg-base-content opacity-40"></div>
+                <span class="font-medium text-base-content line-through">
+                  {user.username}
+                  <span class="sr-only">(offline)</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
