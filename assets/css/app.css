@@ -56,7 +56,7 @@
   --noise: 0;
 }
 
-@plugin "daisyui/theme" {
+@plugin "../vendor/daisyui-theme" {
   name: "light";
   default: true;
   prefersdark: false;
